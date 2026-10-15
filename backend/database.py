@@ -15,6 +15,20 @@ def init_database():
     with get_connection() as connection:
         connection.execute(
             """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                email TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                country TEXT NOT NULL DEFAULT 'Other',
+                preferred_language TEXT NOT NULL DEFAULT 'en',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
+        connection.execute(
+            """
             CREATE TABLE IF NOT EXISTS assignments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
@@ -25,6 +39,22 @@ def init_database():
             )
             """
         )
+
+        # Хуучин өгөгдөлд user_id багана байхгүй бол нэмнэ.
+        columns = {
+            row["name"]
+            for row in connection.execute(
+                "PRAGMA table_info(assignments)"
+            ).fetchall()
+        }
+
+        if "user_id" not in columns:
+            connection.execute(
+                """
+                ALTER TABLE assignments
+                ADD COLUMN user_id INTEGER REFERENCES users(id)
+                """
+            )
 
 
 if __name__ == "__main__":
