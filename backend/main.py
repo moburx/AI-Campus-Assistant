@@ -83,6 +83,8 @@ def get_current_user(
         )
 
     return dict(user)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_database()
@@ -97,6 +99,10 @@ app = FastAPI(
 )
 password_hash = PasswordHash.recommended()
 
+@app.get("/api/auth/me")
+def get_me(current_user: dict = Depends(get_current_user)):
+    return current_user
+
 
 class UserCreate(BaseModel):
     username: str = Field(min_length=3, max_length=30)
@@ -108,6 +114,8 @@ class UserCreate(BaseModel):
         min_length=2,
         max_length=10,
     )
+
+
 class UserLogin(BaseModel):
     username: str = Field(min_length=3, max_length=30)
     password: str = Field(min_length=8, max_length=128)
@@ -162,14 +170,18 @@ def health_check():
 
 
 @app.get("/api/assignments")
-def get_assignments():
+def get_assignments(
+    current_user: dict = Depends(get_current_user),
+):
     with get_connection() as connection:
         rows = connection.execute(
             """
             SELECT id, title, course, deadline, completed, created_at
             FROM assignments
+            WHERE user_id = ?
             ORDER BY id DESC
-            """
+            """,
+            (current_user["id"],),
         ).fetchall()
 
     return [assignment_to_dict(row) for row in rows]
@@ -179,7 +191,10 @@ def get_assignments():
     "/api/assignments",
     status_code=status.HTTP_201_CREATED,
 )
-def create_assignment(assignment: AssignmentCreate):
+def create_assignment(
+    assignment: AssignmentCreate,
+    current_user: dict = Depends(get_current_user),
+):
     title = assignment.title.strip()
     course = assignment.course.strip()
 
@@ -192,19 +207,26 @@ def create_assignment(assignment: AssignmentCreate):
     with get_connection() as connection:
         cursor = connection.execute(
             """
-            INSERT INTO assignments (title, course, deadline)
-            VALUES (?, ?, ?)
+            INSERT INTO assignments (
+                title, course, deadline, user_id
+            )
+            VALUES (?, ?, ?, ?)
             """,
-            (title, course, assignment.deadline),
+            (
+                title,
+                course,
+                assignment.deadline,
+                current_user["id"],
+            ),
         )
 
         row = connection.execute(
             """
             SELECT id, title, course, deadline, completed, created_at
             FROM assignments
-            WHERE id = ?
+            WHERE id = ? AND user_id = ?
             """,
-            (cursor.lastrowid,),
+            (cursor.lastrowid, current_user["id"]),
         ).fetchone()
 
     return assignment_to_dict(row)
@@ -214,15 +236,20 @@ def create_assignment(assignment: AssignmentCreate):
 def update_assignment(
     assignment_id: int,
     update: AssignmentUpdate,
+    current_user: dict = Depends(get_current_user),
 ):
     with get_connection() as connection:
         cursor = connection.execute(
             """
             UPDATE assignments
             SET completed = ?
-            WHERE id = ?
+            WHERE id = ? AND user_id = ?
             """,
-            (int(update.completed), assignment_id),
+            (
+                int(update.completed),
+                assignment_id,
+                current_user["id"],
+            ),
         )
 
         if cursor.rowcount == 0:
@@ -235,9 +262,9 @@ def update_assignment(
             """
             SELECT id, title, course, deadline, completed, created_at
             FROM assignments
-            WHERE id = ?
+            WHERE id = ? AND user_id = ?
             """,
-            (assignment_id,),
+            (assignment_id, current_user["id"]),
         ).fetchone()
 
     return assignment_to_dict(row)
@@ -247,11 +274,17 @@ def update_assignment(
     "/api/assignments/{assignment_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-def remove_assignment(assignment_id: int):
+def remove_assignment(
+    assignment_id: int,
+    current_user: dict = Depends(get_current_user),
+):
     with get_connection() as connection:
         cursor = connection.execute(
-            "DELETE FROM assignments WHERE id = ?",
-            (assignment_id,),
+            """
+            DELETE FROM assignments
+            WHERE id = ? AND user_id = ?
+            """,
+            (assignment_id, current_user["id"]),
         )
 
         if cursor.rowcount == 0:
@@ -261,6 +294,8 @@ def remove_assignment(assignment_id: int):
             )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED)
 def register_user(user: UserCreate):
     username = user.username.strip()
@@ -334,15 +369,21 @@ def login_user(user: UserLogin):
         row["password_hash"],
     ):
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password.",
         )
 
+    access_token = create_access_token(row["id"])
+
     return {
-        "id": row["id"],
-        "username": row["username"],
-        "email": row["email"],
-        "country": row["country"],
-        "preferred_language": row["preferred_language"],
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": row["id"],
+            "username": row["username"],
+            "email": row["email"],
+            "country": row["country"],
+            "preferred_language": row["preferred_language"],
+        },
         "message": "Login successful.",
     }
