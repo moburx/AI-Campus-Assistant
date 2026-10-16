@@ -1,10 +1,206 @@
-const API_URL = "http://127.0.0.1:8000/api/assignments";
+// ========================================
+// AI Campus Assistant - Frontend
+// ========================================
+
+const API_BASE = "http://127.0.0.1:8001/api";
+const TOKEN_KEY = "campus_token";
+const USER_KEY = "campus_user";
 
 let assignments = [];
 
+// ---------- Элементүүд ----------
+const authSection = document.getElementById("auth-section");
+const appContent = document.getElementById("app-content");
+const userInfo = document.getElementById("user-info");
+const userNameLabel = document.getElementById("user-name");
+const logoutButton = document.getElementById("logout-button");
+
+const loginForm = document.getElementById("login-form");
+const registerForm = document.getElementById("register-form");
+const tabLogin = document.getElementById("tab-login");
+const tabRegister = document.getElementById("tab-register");
+const authMessage = document.getElementById("auth-message");
+
+const assignmentForm = document.getElementById("assignment-form");
+const searchInput = document.getElementById("assignment-search");
+const statusFilter = document.getElementById("assignment-status");
+
+const chatForm = document.getElementById("chat-form");
+const chatInput = document.getElementById("chat-input");
+const chatMessages = document.getElementById("chat-messages");
+const chatInitialHTML = chatMessages.innerHTML;
+
+// ---------- Token / session ----------
+function getToken() {
+    return localStorage.getItem(TOKEN_KEY);
+}
+
+function saveSession(token, user) {
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+function clearSession() {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+}
+
+// ---------- API туслах функцууд ----------
+async function readError(response, fallback) {
+    try {
+        const data = await response.json();
+
+        if (typeof data.detail === "string") {
+            return data.detail;
+        }
+
+        if (Array.isArray(data.detail)) {
+            return data.detail.map(item => item.msg).join(" ");
+        }
+    } catch (error) {
+        // JSON биш хариу байж болно
+    }
+
+    return fallback;
+}
+
+// Нэвтрээгүй хүсэлт (login, register)
+async function publicPost(path, payload) {
+    return fetch(`${API_BASE}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+}
+
+// JWT token-той хүсэлт
+async function apiFetch(path, options = {}) {
+    const headers = { ...(options.headers || {}) };
+
+    if (options.body) {
+        headers["Content-Type"] = "application/json";
+    }
+
+    const token = getToken();
+    if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers
+    });
+
+    if (response.status === 401) {
+        logout();
+        throw new Error("Нэвтрэх хугацаа дууссан. Дахин нэвтэрнэ үү.");
+    }
+
+    return response;
+}
+
+// ---------- Нэвтрэх хэсгийн UI ----------
+function showAuthMessage(text, isError = true) {
+    authMessage.textContent = text;
+    authMessage.className = isError ? "auth-message error" : "auth-message success";
+}
+
+function switchTab(tab) {
+    const isLogin = tab === "login";
+
+    loginForm.hidden = !isLogin;
+    registerForm.hidden = isLogin;
+    tabLogin.classList.toggle("active", isLogin);
+    tabRegister.classList.toggle("active", !isLogin);
+    authMessage.textContent = "";
+}
+
+function showAuth() {
+    authSection.hidden = false;
+    appContent.hidden = true;
+    userInfo.hidden = true;
+}
+
+function showApp(user) {
+    authSection.hidden = true;
+    appContent.hidden = false;
+    userInfo.hidden = false;
+    userNameLabel.textContent = user.username;
+}
+
+function logout() {
+    clearSession();
+    assignments = [];
+    renderAssignments();
+    chatMessages.innerHTML = chatInitialHTML;
+    searchInput.value = "";
+    statusFilter.value = "all";
+    showAuth();
+}
+
+tabLogin.addEventListener("click", () => switchTab("login"));
+tabRegister.addEventListener("click", () => switchTab("register"));
+logoutButton.addEventListener("click", logout);
+
+async function loginUser(username, password) {
+    const response = await publicPost("/auth/login", { username, password });
+
+    if (!response.ok) {
+        throw new Error(await readError(response, "Нэвтэрч чадсангүй."));
+    }
+
+    const data = await response.json();
+    saveSession(data.access_token, data.user);
+    showApp(data.user);
+    await loadAssignments();
+}
+
+loginForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const username = document.getElementById("login-username").value.trim();
+    const password = document.getElementById("login-password").value;
+
+    try {
+        await loginUser(username, password);
+        loginForm.reset();
+        authMessage.textContent = "";
+    } catch (error) {
+        showAuthMessage(error.message);
+    }
+});
+
+registerForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const payload = {
+        username: document.getElementById("register-username").value.trim(),
+        email: document.getElementById("register-email").value.trim(),
+        password: document.getElementById("register-password").value,
+        country: document.getElementById("register-country").value.trim() || "Other",
+        preferred_language: document.getElementById("register-language").value
+    };
+
+    try {
+        const response = await publicPost("/auth/register", payload);
+
+        if (!response.ok) {
+            throw new Error(await readError(response, "Бүртгүүлж чадсангүй."));
+        }
+
+        // Бүртгүүлсний дараа автоматаар нэвтрүүлнэ
+        await loginUser(payload.username, payload.password);
+        registerForm.reset();
+        authMessage.textContent = "";
+    } catch (error) {
+        showAuthMessage(error.message);
+    }
+});
+
+// ---------- Даалгавар ----------
 async function loadAssignments() {
     try {
-        const response = await fetch(API_URL);
+        const response = await apiFetch("/assignments");
 
         if (!response.ok) {
             throw new Error("Даалгавар уншиж чадсангүй.");
@@ -14,51 +210,38 @@ async function loadAssignments() {
         renderAssignments();
     } catch (error) {
         console.error("API алдаа:", error);
-        alert("Сервертэй холбогдож чадсангүй. Backend ажиллаж байгаа эсэхийг шалгана уу.");
+        if (getToken()) {
+            alert("Даалгавар уншиж чадсангүй. Backend ажиллаж байгаа эсэхийг шалгана уу.");
+        }
     }
 }
 
 async function addAssignment(title, course, deadline) {
     try {
-        const response = await fetch(API_URL, {
+        const response = await apiFetch("/assignments", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                title,
-                course,
-                deadline
-            })
+            body: JSON.stringify({ title, course, deadline })
         });
 
         if (!response.ok) {
-            throw new Error("Даалгавар нэмэхэд алдаа гарлаа.");
+            throw new Error(await readError(response, "Даалгавар нэмэхэд алдаа гарлаа."));
         }
 
         await loadAssignments();
     } catch (error) {
         console.error(error);
-        alert("Даалгавар нэмэх боломжгүй байна.");
+        alert(error.message);
     }
 }
 
 async function toggleAssignment(id) {
-    const assignment = assignments.find(
-        item => item.id === id
-    );
-
+    const assignment = assignments.find(item => item.id === id);
     if (!assignment) return;
 
     try {
-        const response = await fetch(`${API_URL}/${id}`, {
+        const response = await apiFetch(`/assignments/${id}`, {
             method: "PATCH",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                completed: !assignment.completed
-            })
+            body: JSON.stringify({ completed: !assignment.completed })
         });
 
         if (!response.ok) {
@@ -68,19 +251,15 @@ async function toggleAssignment(id) {
         await loadAssignments();
     } catch (error) {
         console.error(error);
-        alert("Даалгаврын төлөв шинэчлэхэд алдаа гарлаа.");
+        alert(error.message);
     }
 }
 
 async function deleteAssignment(id) {
-    const confirmed = confirm(
-        "Энэ даалгаврыг устгах уу?"
-    );
-
-    if (!confirmed) return;
+    if (!confirm("Энэ даалгаврыг устгах уу?")) return;
 
     try {
-        const response = await fetch(`${API_URL}/${id}`, {
+        const response = await apiFetch(`/assignments/${id}`, {
             method: "DELETE"
         });
 
@@ -91,7 +270,7 @@ async function deleteAssignment(id) {
         await loadAssignments();
     } catch (error) {
         console.error(error);
-        alert("Даалгавар устгахад алдаа гарлаа.");
+        alert(error.message);
     }
 }
 
@@ -101,80 +280,66 @@ function renderAssignments() {
     const completedCount = document.getElementById("completed-count");
     const remainingCount = document.getElementById("remaining-count");
 
-    if (!list || !totalCount || !completedCount || !remainingCount) {
-        console.error("Даалгаврын HTML элементүүд олдсонгүй.");
-        return;
-    }
-
-    const completed = assignments.filter(
-        item => item.completed
-    ).length;
+    const completed = assignments.filter(item => item.completed).length;
 
     totalCount.textContent = assignments.length;
     completedCount.textContent = completed;
     remainingCount.textContent = assignments.length - completed;
-const searchInput = document.getElementById("assignment-search");
-const statusFilter = document.getElementById("assignment-status");
 
-const searchText = searchInput
-    ? searchInput.value.trim().toLowerCase()
-    : "";
+    const searchText = searchInput.value.trim().toLowerCase();
+    const selectedStatus = statusFilter.value;
 
-const selectedStatus = statusFilter
-    ? statusFilter.value
-    : "all";
+    const filtered = assignments.filter(item => {
+        const matchesSearch =
+            item.title.toLowerCase().includes(searchText) ||
+            item.course.toLowerCase().includes(searchText);
 
-const filteredAssignments = assignments.filter(item => {
-    const matchesSearch =
-        item.title.toLowerCase().includes(searchText) ||
-        item.course.toLowerCase().includes(searchText);
+        const matchesStatus =
+            selectedStatus === "all" ||
+            (selectedStatus === "completed" && item.completed) ||
+            (selectedStatus === "incomplete" && !item.completed);
 
-    const matchesStatus =
-        selectedStatus === "all" ||
-        (selectedStatus === "completed" && item.completed) ||
-        (selectedStatus === "incomplete" && !item.completed);
+        return matchesSearch && matchesStatus;
+    });
 
-    return matchesSearch && matchesStatus;
-});
     list.replaceChildren();
 
-if (assignments.length === 0) {
-    const message = document.createElement("p");
-    message.textContent = "Одоогоор даалгавар алга.";
-    list.appendChild(message);
-    return;
-}
+    if (assignments.length === 0) {
+        const message = document.createElement("p");
+        message.textContent = "Одоогоор даалгавар алга.";
+        list.appendChild(message);
+        return;
+    }
 
-if (filteredAssignments.length === 0) {
-    const message = document.createElement("p");
-    message.textContent = "Тохирох даалгавар олдсонгүй.";
-    list.appendChild(message);
-    return;
-}
+    if (filtered.length === 0) {
+        const message = document.createElement("p");
+        message.textContent = "Тохирох даалгавар олдсонгүй.";
+        list.appendChild(message);
+        return;
+    }
 
-filteredAssignments.forEach(item => {
+    filtered.forEach(item => {
         const article = document.createElement("article");
         article.className = "assignment-item";
-        // Даалгаврын хугацааг шалгах
-if (!item.completed) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const deadlineDate = new Date(item.deadline + "T00:00:00");
-    const diffTime = deadlineDate.getTime() - today.getTime();
-    const daysLeft = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-    if (daysLeft < 0) {
-        article.classList.add("overdue");
-    } else if (daysLeft <= 3) {
-        article.classList.add("due-soon");
-    } else {
-        article.classList.add("upcoming");
-    }
-}
 
         if (item.completed) {
             article.classList.add("completed");
+        } else {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const deadlineDate = new Date(item.deadline + "T00:00:00");
+            const daysLeft = Math.round(
+                (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+            );
+
+            if (daysLeft < 0) {
+                article.classList.add("overdue");
+            } else if (daysLeft <= 3) {
+                article.classList.add("due-soon");
+            } else {
+                article.classList.add("upcoming");
+            }
         }
 
         const info = document.createElement("div");
@@ -195,22 +360,14 @@ if (!item.completed) {
 
         const completeButton = document.createElement("button");
         completeButton.type = "button";
-        completeButton.textContent = item.completed
-            ? "Буцаах"
-            : "Дууссан";
-
-        completeButton.addEventListener("click", () => {
-            toggleAssignment(item.id);
-        });
+        completeButton.textContent = item.completed ? "Буцаах" : "Дууссан";
+        completeButton.addEventListener("click", () => toggleAssignment(item.id));
 
         const deleteButton = document.createElement("button");
         deleteButton.type = "button";
         deleteButton.className = "delete-button";
         deleteButton.textContent = "Устгах";
-
-        deleteButton.addEventListener("click", () => {
-            deleteAssignment(item.id);
-        });
+        deleteButton.addEventListener("click", () => deleteAssignment(item.id));
 
         actions.append(completeButton, deleteButton);
         article.append(info, actions);
@@ -218,22 +375,12 @@ if (!item.completed) {
     });
 }
 
-const form = document.getElementById("assignment-form");
-
-form.addEventListener("submit", async event => {
+assignmentForm.addEventListener("submit", async event => {
     event.preventDefault();
 
-    const title = document
-        .getElementById("assignment-title")
-        .value.trim();
-
-    const course = document
-        .getElementById("assignment-course")
-        .value.trim();
-
-    const deadline = document
-        .getElementById("assignment-deadline")
-        .value;
+    const title = document.getElementById("assignment-title").value.trim();
+    const course = document.getElementById("assignment-course").value.trim();
+    const deadline = document.getElementById("assignment-deadline").value;
 
     if (!title || !course || !deadline) {
         alert("Бүх талбарыг бөглөнө үү.");
@@ -241,160 +388,103 @@ form.addEventListener("submit", async event => {
     }
 
     await addAssignment(title, course, deadline);
-
-    form.reset();
+    assignmentForm.reset();
 });
-const searchInput = document.getElementById("assignment-search");
-const statusFilter = document.getElementById("assignment-status");
 
-if (searchInput) {
-    searchInput.addEventListener("input", renderAssignments);
-}
+searchInput.addEventListener("input", renderAssignments);
+statusFilter.addEventListener("change", renderAssignments);
 
-if (statusFilter) {
-    statusFilter.addEventListener("change", renderAssignments);
-}
-// ========================================
-// AI Campus Assistant - Chat
-// ========================================
-
-const chatForm = document.getElementById("chat-form");
-const chatInput = document.getElementById("chat-input");
-const chatMessages = document.getElementById("chat-messages");
-
-// Чатанд шинэ мессеж нэмэх
+// ---------- Чат ----------
 function addChatMessage(message, sender) {
-    const messageElement = document.createElement("div");
+    const element = document.createElement("div");
+    element.classList.add("chat-message");
+    element.classList.add(sender === "user" ? "user-message" : "bot-message");
+    element.textContent = message;
 
-    messageElement.classList.add("chat-message");
-
-    if (sender === "user") {
-        messageElement.classList.add("user-message");
-    } else {
-        messageElement.classList.add("bot-message");
-    }
-
-    // Хэрэглэгчийн оруулсан текстийг HTML гэж ажиллуулахгүй
-    messageElement.textContent = message;
-
-    chatMessages.appendChild(messageElement);
-
-    // Хамгийн сүүлийн мессеж рүү гүйлгэх
+    chatMessages.appendChild(element);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// Хариултын текстийг бэлтгэх
+// Хариултыг одоо ачаалагдсан даалгавруудаас бэлдэнэ (дахин fetch хийхгүй)
 function generateAssistantResponse(question) {
     const text = question.toLowerCase().trim();
 
-    // API-аас одоогийн даалгавруудыг авах
-    return fetch(API_URL)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("Даалгавруудыг уншиж чадсангүй.");
-            }
+    const incompleteTasks = assignments.filter(task => !task.completed);
+    const completedTasks = assignments.filter(task => task.completed);
 
-            return response.json();
-        })
-        .then(tasks => {
-            const incompleteTasks = tasks.filter(task => !task.completed);
-            const completedTasks = tasks.filter(task => task.completed);
+    if (text.includes("хэдэн") && (text.includes("даалгавар") || text.includes("task"))) {
+        return `Нийт ${assignments.length} даалгавар байна. Дууссан: ${completedTasks.length}, үлдсэн: ${incompleteTasks.length}.`;
+    }
 
-            // Нийт даалгаврын тоо
-            if (
-                text.includes("хэдэн") &&
-                (text.includes("даалгавар") || text.includes("task"))
-            ) {
-                return `Нийт ${tasks.length} даалгавар байна. Дууссан: ${completedTasks.length}, үлдсэн: ${incompleteTasks.length}.`;
-            }
+    if (text.includes("дууссан") || text.includes("completed")) {
+        if (completedTasks.length === 0) {
+            return "Одоогоор дууссан даалгавар алга байна.";
+        }
+        return "Дууссан даалгаврууд: " + completedTasks.map(task => task.title).join(", ");
+    }
 
-            // Дууссан даалгаврууд
-            if (
-                text.includes("дууссан") ||
-                text.includes("completed")
-            ) {
-                if (completedTasks.length === 0) {
-                    return "Одоогоор дууссан даалгавар алга байна.";
-                }
+    if (text.includes("үлдсэн") || text.includes("дуусаагүй") || text.includes("incomplete")) {
+        if (incompleteTasks.length === 0) {
+            return "Бүх даалгавар дууссан байна. Баяр хүргэе! 🎉";
+        }
+        return "Дуусаагүй даалгаврууд: " + incompleteTasks.map(task => task.title).join(", ");
+    }
 
-                return "Дууссан даалгаврууд: " +
-                    completedTasks.map(task => task.title).join(", ");
-            }
+    if (text.includes("ойрын") || text.includes("хугацаа") || text.includes("deadline")) {
+        const sorted = incompleteTasks
+            .filter(task => task.deadline)
+            .sort((a, b) => a.deadline.localeCompare(b.deadline));
 
-            // Дуусаагүй даалгаврууд
-            if (
-                text.includes("үлдсэн") ||
-                text.includes("дуусаагүй") ||
-                text.includes("incomplete")
-            ) {
-                if (incompleteTasks.length === 0) {
-                    return "Бүх даалгавар дууссан байна. Баяр хүргэе! 🎉";
-                }
-
-                return "Дуусаагүй даалгаврууд: " +
-                    incompleteTasks.map(task => task.title).join(", ");
-            }
-
-            // Хамгийн ойрын хугацаатай даалгавар
-            if (
-                text.includes("ойрын") ||
-                text.includes("хугацаа") ||
-                text.includes("deadline")
-            ) {
-                const tasksWithDeadline = incompleteTasks
-                    .filter(task => task.deadline)
-                    .sort((a, b) => a.deadline.localeCompare(b.deadline));
-
-                if (tasksWithDeadline.length === 0) {
-                    return "Хугацаатай дуусаагүй даалгавар олдсонгүй.";
-                }
-
-                const task = tasksWithDeadline[0];
-
-                return `Хамгийн ойрын хугацаатай даалгавар: ${task.title}. Дуусах хугацаа: ${task.deadline}.`;
-            }
-
-            // Тусламж
-            if (
-                text.includes("тусламж") ||
-                text.includes("help")
-            ) {
-                return "Та дараах асуултуудыг асууж болно: 'Ямар даалгавар үлдсэн бэ?', 'Хэдэн даалгавар үлдсэн бэ?', 'Дууссан даалгаврууд юу вэ?', 'Хамгийн ойрын хугацаатай даалгавар юу вэ?'";
-            }
-
-            return "Таны асуултыг бүрэн ойлгосонгүй. 'Ямар даалгавар үлдсэн бэ?' эсвэл 'Хамгийн ойрын хугацаатай даалгавар юу вэ?' гэж асуугаад үзээрэй.";
-        });
-}
-
-// Хэрэглэгчийн асуултыг илгээх
-if (chatForm) {
-    chatForm.addEventListener("submit", async function (event) {
-        event.preventDefault();
-
-        const question = chatInput.value.trim();
-
-        if (!question) {
-            return;
+        if (sorted.length === 0) {
+            return "Хугацаатай дуусаагүй даалгавар олдсонгүй.";
         }
 
-        addChatMessage(question, "user");
+        const task = sorted[0];
+        return `Хамгийн ойрын хугацаатай даалгавар: ${task.title}. Дуусах хугацаа: ${task.deadline}.`;
+    }
 
-        chatInput.value = "";
-        chatInput.focus();
+    if (text.includes("тусламж") || text.includes("help")) {
+        return "Та дараах асуултуудыг асууж болно: 'Ямар даалгавар үлдсэн бэ?', 'Хэдэн даалгавар үлдсэн бэ?', 'Дууссан даалгаврууд юу вэ?', 'Хамгийн ойрын хугацаатай даалгавар юу вэ?'";
+    }
 
-        try {
-            const answer = await generateAssistantResponse(question);
-            addChatMessage(answer, "bot");
-        } catch (error) {
-            console.error("Chat error:", error);
-
-            addChatMessage(
-                "Уучлаарай, даалгаврын мэдээллийг авч чадсангүй. Backend сервер ажиллаж байгаа эсэхийг шалгана уу.",
-                "bot"
-            );
-        }
-    });
+    return "Таны асуултыг бүрэн ойлгосонгүй. 'Ямар даалгавар үлдсэн бэ?' эсвэл 'Хамгийн ойрын хугацаатай даалгавар юу вэ?' гэж асуугаад үзээрэй.";
 }
-loadAssignments();
 
-console.log("AI Campus Assistant: API холболт эхэллээ.");
+chatForm.addEventListener("submit", event => {
+    event.preventDefault();
+
+    const question = chatInput.value.trim();
+    if (!question) return;
+
+    addChatMessage(question, "user");
+    chatInput.value = "";
+    chatInput.focus();
+
+    addChatMessage(generateAssistantResponse(question), "bot");
+});
+
+// ---------- Эхлүүлэх ----------
+async function init() {
+    if (!getToken()) {
+        showAuth();
+        return;
+    }
+
+    try {
+        const response = await apiFetch("/auth/me");
+
+        if (!response.ok) {
+            throw new Error("Хэрэглэгчийн мэдээлэл авч чадсангүй.");
+        }
+
+        const user = await response.json();
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+        showApp(user);
+        await loadAssignments();
+    } catch (error) {
+        console.error(error);
+        showAuth();
+    }
+}
+
+init();

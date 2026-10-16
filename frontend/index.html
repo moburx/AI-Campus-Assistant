@@ -7,6 +7,55 @@
     <title>AI Campus Assistant</title>
 
     <link rel="stylesheet" href="style.css">
+
+    <style>
+        [hidden] { display: none !important; }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .auth-section {
+            max-width: 420px;
+            margin: 40px auto;
+            padding: 24px;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .auth-tabs button {
+            flex: 1;
+            opacity: 0.6;
+        }
+
+        .auth-tabs button.active {
+            opacity: 1;
+            font-weight: bold;
+        }
+
+        .auth-section form {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .auth-message {
+            margin-top: 12px;
+            min-height: 1.2em;
+        }
+
+        .auth-message.error { color: #c0392b; }
+        .auth-message.success { color: #1e8449; }
+    </style>
 </head>
 
 <body>
@@ -18,145 +67,204 @@
             <a href="#assignments">Даалгавар</a>
             <a href="#assistant">AI туслах</a>
         </nav>
+
+        <div id="user-info" class="user-info" hidden>
+            <span>👤 <strong id="user-name"></strong></span>
+            <button id="logout-button" type="button">Гарах</button>
+        </div>
     </header>
 
     <main class="container">
 
-        <section class="welcome">
-            <p class="subtitle">YOUR SMART CAMPUS COMPANION</p>
+        <!-- Нэвтрэх / Бүртгүүлэх -->
+        <section id="auth-section" class="auth-section" hidden>
+            <h2>🔐 Тавтай морил</h2>
 
-            <h1>Сайн байна уу? 👋</h1>
-
-            <p>
-                Хичээл, даалгавар, сургуулийн мэдээллээ
-                нэг дороос удирдаарай.
-            </p>
-
-            <button onclick="showWelcome()">
-                Эхлэх
-            </button>
-        </section>
-
-        <section id="dashboard" class="dashboard">
-            <h2>Миний самбар</h2>
-
-            <div class="cards">
-
-                <article class="card">
-                    <div class="icon">📝</div>
-                    <h3>Даалгавар</h3>
-                    <p>Хичээлийн ажлуудаа удирдах</p>
-                    <span>Удахгүй</span>
-                </article>
-
-                <article class="card">
-                    <div class="icon">🤖</div>
-                    <h3>AI туслах</h3>
-                    <p>Хичээлийн материалаа ойлгох</p>
-                    <span>Удахгүй</span>
-                </article>
-
-                <article class="card">
-                    <div class="icon">📅</div>
-                    <h3>Суралцах төлөвлөгөө</h3>
-                    <p>Өдөр тутмын ажлаа төлөвлөх</p>
-                    <span>Удахгүй</span>
-                </article>
-
+            <div class="auth-tabs">
+                <button id="tab-login" type="button" class="active">Нэвтрэх</button>
+                <button id="tab-register" type="button">Бүртгүүлэх</button>
             </div>
+
+            <form id="login-form">
+                <label for="login-username">Хэрэглэгчийн нэр</label>
+                <input id="login-username" type="text" minlength="3" maxlength="30" required autocomplete="username">
+
+                <label for="login-password">Нууц үг</label>
+                <input id="login-password" type="password" minlength="8" maxlength="128" required autocomplete="current-password">
+
+                <button type="submit">Нэвтрэх</button>
+            </form>
+
+            <form id="register-form" hidden>
+                <label for="register-username">Хэрэглэгчийн нэр (3-30 тэмдэгт)</label>
+                <input id="register-username" type="text" minlength="3" maxlength="30" required autocomplete="username">
+
+                <label for="register-email">Имэйл</label>
+                <input id="register-email" type="email" maxlength="254" required autocomplete="email">
+
+                <label for="register-password">Нууц үг (хамгийн багадаа 8 тэмдэгт)</label>
+                <input id="register-password" type="password" minlength="8" maxlength="128" required autocomplete="new-password">
+
+                <label for="register-country">Улс</label>
+                <input id="register-country" type="text" maxlength="50" placeholder="Mongolia">
+
+                <label for="register-language">Хэл</label>
+                <select id="register-language">
+                    <option value="mn">Монгол</option>
+                    <option value="en">English</option>
+                    <option value="ko">한국어</option>
+                </select>
+
+                <button type="submit">Бүртгүүлэх</button>
+            </form>
+
+            <p id="auth-message" class="auth-message"></p>
         </section>
-    <section id="assignments" class="assignment-manager">
-        <h2>📝 Даалгаврын удирдлага</h2>
 
-        <form id="assignment-form">
-            <label for="assignment-title">Даалгаврын нэр</label>
-            <input
-                id="assignment-title"
-                type="text"
-                placeholder="Software Design Project"
-                required
-            >
+        <!-- Нэвтэрсний дараа харагдах хэсэг -->
+        <div id="app-content" hidden>
 
-            <label for="assignment-course">Хичээлийн нэр</label>
-            <input
-                id="assignment-course"
-                type="text"
-                placeholder="소프트웨어설계"
-                required
-            >
+            <section class="welcome">
+                <p class="subtitle">YOUR SMART CAMPUS COMPANION</p>
 
-            <label for="assignment-deadline">Дуусах хугацаа</label>
-            <input
-                id="assignment-deadline"
-                type="date"
-                required
-            >
+                <h1>Сайн байна уу? 👋</h1>
 
-            <button type="submit">+ Даалгавар нэмэх</button>
-        </form>
+                <p>
+                    Хичээл, даалгавар, сургуулийн мэдээллээ
+                    нэг дороос удирдаарай.
+                </p>
 
-        <div class="assignment-summary">
-            <span>Нийт: <strong id="total-count">0</strong></span>
-            <span>Дууссан: <strong id="completed-count">0</strong></span>
-            <span>Үлдсэн: <strong id="remaining-count">0</strong></span>
+                <button onclick="showWelcome()">
+                    Эхлэх
+                </button>
+            </section>
+
+            <section id="dashboard" class="dashboard">
+                <h2>Миний самбар</h2>
+
+                <div class="cards">
+
+                    <article class="card">
+                        <div class="icon">📝</div>
+                        <h3>Даалгавар</h3>
+                        <p>Хичээлийн ажлуудаа удирдах</p>
+                        <span>Удахгүй</span>
+                    </article>
+
+                    <article class="card">
+                        <div class="icon">🤖</div>
+                        <h3>AI туслах</h3>
+                        <p>Хичээлийн материалаа ойлгох</p>
+                        <span>Удахгүй</span>
+                    </article>
+
+                    <article class="card">
+                        <div class="icon">📅</div>
+                        <h3>Суралцах төлөвлөгөө</h3>
+                        <p>Өдөр тутмын ажлаа төлөвлөх</p>
+                        <span>Удахгүй</span>
+                    </article>
+
+                </div>
+            </section>
+
+            <section id="assignments" class="assignment-manager">
+                <h2>📝 Даалгаврын удирдлага</h2>
+
+                <form id="assignment-form">
+                    <label for="assignment-title">Даалгаврын нэр</label>
+                    <input
+                        id="assignment-title"
+                        type="text"
+                        placeholder="Software Design Project"
+                        required
+                    >
+
+                    <label for="assignment-course">Хичээлийн нэр</label>
+                    <input
+                        id="assignment-course"
+                        type="text"
+                        placeholder="소프트웨어설계"
+                        required
+                    >
+
+                    <label for="assignment-deadline">Дуусах хугацаа</label>
+                    <input
+                        id="assignment-deadline"
+                        type="date"
+                        required
+                    >
+
+                    <button type="submit">+ Даалгавар нэмэх</button>
+                </form>
+
+                <div class="assignment-summary">
+                    <span>Нийт: <strong id="total-count">0</strong></span>
+                    <span>Дууссан: <strong id="completed-count">0</strong></span>
+                    <span>Үлдсэн: <strong id="remaining-count">0</strong></span>
+                </div>
+
+                <!-- Даалгавар хайх, шүүх -->
+                <div class="assignment-filters">
+                    <input
+                        type="text"
+                        id="assignment-search"
+                        placeholder="🔎 Даалгавар эсвэл хичээлийн нэрээр хайх..."
+                    >
+
+                    <select id="assignment-status">
+                        <option value="all">Бүх даалгавар</option>
+                        <option value="incomplete">Дуусаагүй</option>
+                        <option value="completed">Дууссан</option>
+                    </select>
+                </div>
+
+                <div id="assignment-list">
+                    <p>Одоогоор даалгавар алга.</p>
+                </div>
+            </section>
+
+            <section id="assistant" class="assistant">
+                <h2>🤖 AI Campus Assistant</h2>
+
+                <p class="assistant-description">
+                    Сургалтын даалгаврынхаа талаар асуугаарай.
+                </p>
+
+                <div id="chat-messages" class="chat-messages">
+                    <div class="chat-message bot-message">
+                        Сайн байна уу! 👋 Би таны даалгавруудын талаар тусалж чадна.
+                        <br>
+                        Жишээ нь: "Ямар даалгавар үлдсэн бэ?"
+                    </div>
+                </div>
+
+                <form id="chat-form" class="chat-form">
+                    <input
+                        type="text"
+                        id="chat-input"
+                        placeholder="Асуултаа энд бичнэ үү..."
+                        autocomplete="off"
+                        required
+                    >
+
+                    <button type="submit">Илгээх</button>
+                </form>
+            </section>
+
         </div>
-<!-- Даалгавар хайх, шүүх -->
-<div class="assignment-filters">
-    <input
-        type="text"
-        id="assignment-search"
-        placeholder="🔎 Даалгавар эсвэл хичээлийн нэрээр хайх..."
-    >
-
-    <select id="assignment-status">
-        <option value="all">Бүх даалгавар</option>
-        <option value="incomplete">Дуусаагүй</option>
-        <option value="completed">Дууссан</option>
-    </select>
-</div>
-        <div id="assignment-list">
-            <p>Одоогоор даалгавар алга.</p>
-        </div>
-    </section> 
-
-<section id="assistant" class="assistant">
-    <h2>🤖 AI Campus Assistant</h2>
-
-    <p class="assistant-description">
-        Сургалтын даалгаврынхаа талаар асуугаарай.
-    </p>
-
-    <div id="chat-messages" class="chat-messages">
-        <div class="chat-message bot-message">
-            Сайн байна уу! 👋 Би таны даалгавруудын талаар тусалж чадна.
-            <br>
-            Жишээ нь: "Ямар даалгавар үлдсэн бэ?"
-        </div>
-    </div>
-
-    <form id="chat-form" class="chat-form">
-        <input
-            type="text"
-            id="chat-input"
-            placeholder="Асуултаа энд бичнэ үү..."
-            autocomplete="off"
-            required
-        >
-
-        <button type="submit">Илгээх</button>
-    </form>
-</section>
-
     </main>
 
     <footer>
         <p>AI Campus Assistant · Software Design Project 2026</p>
     </footer>
 
-<script>
-    function showWelcome() {
-        alert("AI Campus Assistant-д тавтай морил!");
-    }
-</script>
+    <script>
+        function showWelcome() {
+            alert("AI Campus Assistant-д тавтай морил!");
+        }
+    </script>
 
-<script src="app.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
