@@ -129,10 +129,14 @@ function showApp(user) {
 }
 
 function logout() {
+    chatSession += 1;
     clearSession();
     assignments = [];
     renderAssignments();
     chatMessages.innerHTML = chatInitialHTML;
+    if (typeof chatSubmitButton !== "undefined" && chatSubmitButton) {
+        chatSubmitButton.disabled = false;
+    }
     searchInput.value = "";
     statusFilter.value = "all";
     showAuth();
@@ -395,17 +399,101 @@ searchInput.addEventListener("input", renderAssignments);
 statusFilter.addEventListener("change", renderAssignments);
 
 // ---------- Чат ----------
-function addChatMessage(message, sender) {
+// Гарах (logout) бүрд нэмэгдэнэ. Хариу ирэхээс өмнө хэрэглэгч гарсан бол
+// хуучин хэрэглэгчийн хариуг шинэ хэрэглэгчид харуулахгүй.
+let chatSession = 0;
+const chatSubmitButton = chatForm.querySelector("button[type='submit'], button");
+
+const SOURCE_LABELS = {
+    gemini: "AI · Gemini",
+    claude: "AI · Claude",
+    rules: "Дүрмийн зөвлөмж",
+    local: "Офлайн хариу"
+};
+
+// "**тод**" хэсгийг <strong> болгоно. HTML-ийг шууд оруулахгүй (XSS-ээс хамгаална).
+function appendInline(parent, text) {
+    text.split("**").forEach((part, index) => {
+        if (!part) return;
+        if (index % 2 === 1) {
+            const strong = document.createElement("strong");
+            strong.textContent = part;
+            parent.appendChild(strong);
+        } else {
+            parent.appendChild(document.createTextNode(part));
+        }
+    });
+}
+
+// AI-ийн markdown хариуг аюулгүй DOM болгож харуулна:
+// "* " эсвэл "- " → жагсаалт, "1. " → дугаартай жагсаалт, бусад → догол мөр.
+function renderMarkdown(container, markdown) {
+    let currentList = null;
+    let currentItem = null;
+
+    markdown.split("\n").forEach(rawLine => {
+        const line = rawLine.trim();
+
+        if (!line) {
+            currentList = null;
+            currentItem = null;
+            return;
+        }
+
+        const bullet = line.match(/^[*-]\s+(.*)$/);
+        const numbered = line.match(/^\d+\.\s+(.*)$/);
+
+        if (bullet || numbered) {
+            const listTag = bullet ? "UL" : "OL";
+            if (!currentList || currentList.tagName !== listTag) {
+                currentList = document.createElement(listTag.toLowerCase());
+                container.appendChild(currentList);
+            }
+            currentItem = document.createElement("li");
+            appendInline(currentItem, (bullet || numbered)[1]);
+            currentList.appendChild(currentItem);
+            return;
+        }
+
+        // Жагсаалтын мөрийн дараах тайлбар мөр нь тухайн мөрийн хэсэг
+        if (currentItem && /^\s{2,}/.test(rawLine)) {
+            currentItem.appendChild(document.createElement("br"));
+            appendInline(currentItem, line);
+            return;
+        }
+
+        currentList = null;
+        currentItem = null;
+        const paragraph = document.createElement("p");
+        appendInline(paragraph, line);
+        container.appendChild(paragraph);
+    });
+}
+
+function addChatMessage(message, sender, source = null) {
     const element = document.createElement("div");
     element.classList.add("chat-message");
     element.classList.add(sender === "user" ? "user-message" : "bot-message");
-    element.textContent = message;
+
+    if (sender === "user") {
+        element.textContent = message;
+    } else {
+        renderMarkdown(element, message);
+
+        if (source) {
+            const badge = document.createElement("span");
+            badge.className = `chat-source chat-source-${source}`;
+            badge.textContent = SOURCE_LABELS[source] || source;
+            element.appendChild(badge);
+        }
+    }
 
     chatMessages.appendChild(element);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+    return element;
 }
 
-// Хариултыг одоо ачаалагдсан даалгавруудаас бэлдэнэ (дахин fetch хийхгүй)
+// Сервертэй холбогдож чадахгүй үед ашиглах хуучин, офлайн хариу
 function generateAssistantResponse(question) {
     const text = question.toLowerCase().trim();
 
@@ -443,24 +531,55 @@ function generateAssistantResponse(question) {
         return `Хамгийн ойрын хугацаатай даалгавар: ${task.title}. Дуусах хугацаа: ${task.deadline}.`;
     }
 
-    if (text.includes("тусламж") || text.includes("help")) {
-        return "Та дараах асуултуудыг асууж болно: 'Ямар даалгавар үлдсэн бэ?', 'Хэдэн даалгавар үлдсэн бэ?', 'Дууссан даалгаврууд юу вэ?', 'Хамгийн ойрын хугацаатай даалгавар юу вэ?'";
-    }
-
-    return "Таны асуултыг бүрэн ойлгосонгүй. 'Ямар даалгавар үлдсэн бэ?' эсвэл 'Хамгийн ойрын хугацаатай даалгавар юу вэ?' гэж асуугаад үзээрэй.";
+    return "Сервертэй холбогдож чадсангүй. Backend ажиллаж байгаа эсэхийг шалгана уу.";
 }
 
-chatForm.addEventListener("submit", event => {
+async function askAssistant(question) {
+    const response = await apiFetch("/assistant", {
+        method: "POST",
+        body: JSON.stringify({ question })
+    });
+
+    if (!response.ok) {
+        throw new Error(await readError(response, "AI туслах хариулж чадсангүй."));
+    }
+
+    return response.json();
+}
+
+chatForm.addEventListener("submit", async event => {
     event.preventDefault();
 
     const question = chatInput.value.trim();
-    if (!question) return;
+    if (!question || chatSubmitButton.disabled) return;
 
     addChatMessage(question, "user");
     chatInput.value = "";
     chatInput.focus();
 
-    addChatMessage(generateAssistantResponse(question), "bot");
+    const session = chatSession;
+    const pending = addChatMessage("Бодож байна…", "bot");
+    pending.classList.add("pending");
+    chatSubmitButton.disabled = true;
+
+    try {
+        const data = await askAssistant(question);
+        if (session !== chatSession) return; // хэрэглэгч гарсан
+        pending.remove();
+        addChatMessage(data.answer, "bot", data.source);
+    } catch (error) {
+        if (session !== chatSession) return;
+        console.error("Assistant алдаа:", error);
+        pending.remove();
+        // Нэвтрэх хугацаа дууссан бол apiFetch аль хэдийн logout хийсэн
+        if (getToken()) {
+            addChatMessage(generateAssistantResponse(question), "bot", "local");
+        }
+    } finally {
+        if (session === chatSession) {
+            chatSubmitButton.disabled = false;
+        }
+    }
 });
 
 // ---------- Эхлүүлэх ----------

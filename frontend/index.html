@@ -55,6 +55,28 @@
 
         .auth-message.error { color: #c0392b; }
         .auth-message.success { color: #1e8449; }
+
+        /* AI чатын хариу */
+        .bot-message p { margin: 0 0 6px; }
+        .bot-message p:last-of-type { margin-bottom: 0; }
+        .bot-message ul,
+        .bot-message ol { margin: 4px 0; padding-left: 20px; }
+        .bot-message li { margin-bottom: 6px; }
+        .chat-message.pending { opacity: 0.6; font-style: italic; }
+
+        .chat-source {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            background: #e8eaf6;
+            color: #3949ab;
+        }
+        .chat-source-rules,
+        .chat-source-local { background: #eceff1; color: #546e7a; }
+
+        .chat-form button:disabled { opacity: 0.6; cursor: wait; }
     </style>
 </head>
 
@@ -111,8 +133,11 @@
                 <label for="register-language">Хэл</label>
                 <select id="register-language">
                     <option value="mn">Монгол</option>
-                    <option value="en">English</option>
                     <option value="ko">한국어</option>
+                    <option value="zh">中文</option>
+                    <option value="ru">Русский</option>
+                    <option value="vi">Tiếng Việt</option>
+                    <option value="en">English</option>
                 </select>
 
                 <button type="submit">Бүртгүүлэх</button>
@@ -154,8 +179,8 @@
                     <article class="card">
                         <div class="icon">🤖</div>
                         <h3>AI туслах</h3>
-                        <p>Хичээлийн материалаа ойлгох</p>
-                        <span>Удахгүй</span>
+                        <p>Даалгавраа юунаас эхлэхийг зөвлөх</p>
+                        <span>Бэлэн</span>
                     </article>
 
                     <article class="card">
@@ -233,9 +258,9 @@
 
                 <div id="chat-messages" class="chat-messages">
                     <div class="chat-message bot-message">
-                        Сайн байна уу! 👋 Би таны даалгавруудын талаар тусалж чадна.
+                        Сайн байна уу! 👋 Би таны дуусаагүй даалгавруудыг харж, юунаас эхлэхийг зөвлөнө.
                         <br>
-                        Жишээ нь: "Ямар даалгавар үлдсэн бэ?"
+                        Жишээ нь: "Энэ долоо хоногт юунаас эхлэх вэ?"
                     </div>
                 </div>
 
