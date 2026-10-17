@@ -1,7 +1,10 @@
-"""AI туслах: дуусаагүй даалгавруудаас "юунаас эхлэх вэ" гэсэн зөвлөмж өгнө.
+"""AI туслах: зөвлөмж өгөх ба чатаар даалгавар нэмэх/засах/дуусгах.
 
-Дараалал: Gemini -> Claude -> үнэгүй дүрмийн зөвлөмж.
-Түлхүүр байхгүй эсвэл дуудлага амжилтгүй бол дараагийнх руу шилжинэ.
+AI үйлчилгээ бүрийг дараах дарааллаар оролдоно:
+  1. Агент горим (backend/agent.py): хэрэгсэл дуудаж даалгаврыг өөрчилж чадна.
+  2. Энгийн зөвлөмж: агент алдаа гаргавал зөвхөн текст зөвлөмж авна.
+Үйлчилгээ бүгд ажиллахгүй бол үнэгүй дүрмийн зөвлөмж (rules) өгнө.
+Дараалал: Gemini -> Claude -> дүрэм.
 """
 
 import json
@@ -11,6 +14,12 @@ from datetime import date
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from backend.agent import (
+    ToolExecutor,
+    build_agent_message,
+    run_claude_agent,
+    run_gemini_agent,
+)
 from backend.auth import get_current_user
 from backend.database import get_connection
 
@@ -52,6 +61,10 @@ RULE_TEXT = {
         "left": "{n} хоног үлдсэн",
         "high": "чухал",
         "footer": "Эхний даалгавраас эхэл.",
+        "action_added": "Даалгавар нэмлээ: {title}",
+        "action_updated": "Даалгавар шинэчиллээ: {title}",
+        "action_completed": "Дууссан гэж тэмдэглэлээ: {title}",
+        "action_failed": "Хийж чадсангүй: {error}",
     },
     "ko": {
         "empty": "남은 과제가 없습니다. 수고하셨습니다!",
@@ -62,6 +75,10 @@ RULE_TEXT = {
         "left": "{n}일 남음",
         "high": "중요",
         "footer": "첫 번째 과제부터 시작하세요.",
+        "action_added": "과제를 추가했습니다: {title}",
+        "action_updated": "과제를 수정했습니다: {title}",
+        "action_completed": "완료로 표시했습니다: {title}",
+        "action_failed": "처리하지 못했습니다: {error}",
     },
     "zh": {
         "empty": "没有未完成的作业。干得好！",
@@ -72,6 +89,10 @@ RULE_TEXT = {
         "left": "还剩 {n} 天",
         "high": "重要",
         "footer": "从第一项开始吧。",
+        "action_added": "已添加作业：{title}",
+        "action_updated": "已更新作业：{title}",
+        "action_completed": "已标记为完成：{title}",
+        "action_failed": "无法完成操作：{error}",
     },
     "ru": {
         "empty": "Незавершённых заданий нет. Отличная работа!",
@@ -82,6 +103,10 @@ RULE_TEXT = {
         "left": "осталось {n} дн.",
         "high": "важно",
         "footer": "Начните с первого задания.",
+        "action_added": "Задание добавлено: {title}",
+        "action_updated": "Задание обновлено: {title}",
+        "action_completed": "Отмечено как выполненное: {title}",
+        "action_failed": "Не удалось выполнить: {error}",
     },
     "vi": {
         "empty": "Không còn bài tập nào chưa hoàn thành. Làm tốt lắm!",
@@ -92,6 +117,10 @@ RULE_TEXT = {
         "left": "còn {n} ngày",
         "high": "quan trọng",
         "footer": "Hãy bắt đầu với bài đầu tiên.",
+        "action_added": "Đã thêm bài tập: {title}",
+        "action_updated": "Đã cập nhật bài tập: {title}",
+        "action_completed": "Đã đánh dấu hoàn thành: {title}",
+        "action_failed": "Không thực hiện được: {error}",
     },
     "en": {
         "empty": "No unfinished assignments. Great job!",
@@ -102,6 +131,10 @@ RULE_TEXT = {
         "left": "{n} day(s) left",
         "high": "important",
         "footer": "Start with the first one.",
+        "action_added": "Added assignment: {title}",
+        "action_updated": "Updated assignment: {title}",
+        "action_completed": "Marked as done: {title}",
+        "action_failed": "Could not do it: {error}",
     },
 }
 
@@ -184,12 +217,15 @@ def call_anthropic(user_message: str) -> str:
 
 
 def get_providers():
-    """Түлхүүр тохируулсан AI үйлчилгээнүүдийг дарааллаар нь буцаана."""
+    """Түлхүүр тохируулсан AI үйлчилгээнүүдийг дарааллаар нь буцаана.
+
+    Элемент бүр: (нэр, агент функц, энгийн зөвлөмжийн функц)
+    """
     providers = []
     if os.getenv("GEMINI_API_KEY"):
-        providers.append(("gemini", call_gemini))
+        providers.append(("gemini", run_gemini_agent, call_gemini))
     if os.getenv("ANTHROPIC_API_KEY"):
-        providers.append(("claude", call_anthropic))
+        providers.append(("claude", run_claude_agent, call_anthropic))
     return providers
 
 
@@ -197,7 +233,7 @@ def load_unfinished_tasks(user_id: int) -> list:
     with get_connection() as connection:
         rows = connection.execute(
             """
-            SELECT title, course, deadline, priority, notes
+            SELECT id, title, course, deadline, priority, notes
             FROM assignments
             WHERE user_id = ? AND completed = 0
             ORDER BY deadline ASC
@@ -208,6 +244,7 @@ def load_unfinished_tasks(user_id: int) -> list:
 
     return [
         {
+            "id": row["id"],
             "title": row["title"],
             "course": row["course"],
             "deadline": row["deadline"],
@@ -227,29 +264,75 @@ def build_user_message(tasks: list, language: str, question: str) -> str:
     )
 
 
+def describe_actions(actions: list, language: str) -> str:
+    """AI хариу бичиж чадаагүй ч үйлдэл хийгдсэн бол юу болсныг хэлнэ."""
+    text = RULE_TEXT.get((language or "en").lower()[:2], RULE_TEXT["en"])
+    lines = []
+
+    for action in actions:
+        if not action["ok"]:
+            lines.append(text["action_failed"].format(error=action.get("error", "")))
+        elif action["tool"] == "add_assignment":
+            lines.append(text["action_added"].format(title=action["title"]))
+        elif action.get("changed") == ["completed"] and action["completed"]:
+            lines.append(text["action_completed"].format(title=action["title"]))
+        else:
+            lines.append(text["action_updated"].format(title=action["title"]))
+
+    return "\n".join(lines)
+
+
+def build_response(answer: str, source: str, mode: str, tasks: list, actions=None) -> dict:
+    return {
+        "answer": answer,
+        "source": source,
+        "mode": mode,
+        "actions": actions or [],
+        "assignment_count": len(tasks),
+    }
+
+
 @router.post("")
 def ask_assistant(
     request: AssistantRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    tasks = load_unfinished_tasks(current_user["id"])
+    user_id = current_user["id"]
     language = current_user["preferred_language"]
-    user_message = build_user_message(tasks, language, request.question)
+    tasks = load_unfinished_tasks(user_id)
 
-    for name, call in get_providers():
+    for name, agent_call, advice_call in get_providers():
+        # 1) Агент горим: хэрэгсэл ашиглаж даалгаврыг өөрчилж болно.
+        executor = ToolExecutor(user_id)
         try:
-            answer = call(user_message)
+            answer = agent_call(build_agent_message(tasks, language, request.question), executor)
+            if answer.strip() or executor.actions:
+                return build_response(
+                    answer.strip() or describe_actions(executor.actions, language),
+                    name,
+                    "agent",
+                    tasks,
+                    executor.actions,
+                )
+        except Exception as error:
+            print(f"{name} agent error:", error)
+            # Өөрчлөлт аль хэдийн хийгдсэн бол дахин оролдохгүй (давхар нэмэхгүйн тулд).
+            if executor.actions:
+                return build_response(
+                    describe_actions(executor.actions, language),
+                    name,
+                    "agent",
+                    tasks,
+                    executor.actions,
+                )
+
+        # 2) Энгийн зөвлөмж (хэрэгсэлгүй).
+        try:
+            answer = advice_call(build_user_message(tasks, language, request.question))
             if answer.strip():
-                return {
-                    "answer": answer,
-                    "source": name,
-                    "assignment_count": len(tasks),
-                }
+                return build_response(answer, name, "advice", tasks)
         except Exception as error:
             print(f"{name} error, trying next option:", error)
 
-    return {
-        "answer": rule_based_advice(tasks, language),
-        "source": "rules",
-        "assignment_count": len(tasks),
-    }
+    # 3) Үнэгүй дүрмийн зөвлөмж
+    return build_response(rule_based_advice(tasks, language), "rules", "rules", tasks)

@@ -159,9 +159,9 @@ const TRANSLATIONS = {
         "stats.colCount": "개수",
 
         "assistant.title": "🤖 AI Campus Assistant",
-        "assistant.description": "남은 과제를 바탕으로 무엇부터 시작할지 조언해 드립니다.",
-        "assistant.greeting": "안녕하세요! 👋 남은 과제를 보고 무엇부터 시작하면 좋을지 알려드릴게요.",
-        "assistant.example": "예: \"이번 주에 무엇부터 시작해야 할까요?\"",
+        "assistant.description": "남은 과제를 바탕으로 조언하고, 채팅으로 과제를 추가·수정·완료할 수 있습니다.",
+        "assistant.greeting": "안녕하세요! 👋 무엇부터 시작할지 알려드리고, 말씀하시면 과제를 직접 추가하거나 완료로 표시해 드려요.",
+        "assistant.example": "예: \"이번 주에 무엇부터 시작해야 할까요?\", \"금요일까지 수학 숙제 추가해줘\"",
         "assistant.placeholder": "질문을 입력하세요...",
         "assistant.send": "보내기",
         "assistant.thinking": "생각 중…",
@@ -171,6 +171,10 @@ const TRANSLATIONS = {
         "source.claude": "AI · Claude",
         "source.rules": "규칙 기반 조언",
         "source.local": "오프라인 답변",
+        "action.added": "추가됨: {title}",
+        "action.updated": "수정됨: {title}",
+        "action.completed": "완료됨: {title}",
+        "action.failed": "실패: {error}",
 
         "footer.text": "AI Campus Assistant · 소프트웨어설계 프로젝트 2026",
         "common.error": "문제가 발생했습니다."
@@ -305,9 +309,9 @@ const TRANSLATIONS = {
         "stats.colCount": "Тоо",
 
         "assistant.title": "🤖 AI Campus Assistant",
-        "assistant.description": "Дуусаагүй даалгавруудаас тань харж юунаас эхлэхийг зөвлөнө.",
-        "assistant.greeting": "Сайн байна уу! 👋 Би таны дуусаагүй даалгавруудыг харж, юунаас эхлэхийг зөвлөнө.",
-        "assistant.example": "Жишээ нь: \"Энэ долоо хоногт юунаас эхлэх вэ?\"",
+        "assistant.description": "Дуусаагүй даалгавраас тань зөвлөж, чатаар даалгавар нэмж, засаж, дуусгана.",
+        "assistant.greeting": "Сайн байна уу! 👋 Юунаас эхлэхийг зөвлөөд, хэлбэл даалгаврыг өөрөө нэмж эсвэл дууссан гэж тэмдэглэнэ.",
+        "assistant.example": "Жишээ нь: \"Энэ долоо хоногт юунаас эхлэх вэ?\", \"Баасан гараг хүртэл математикийн гэрийн даалгавар нэм\"",
         "assistant.placeholder": "Асуултаа энд бичнэ үү...",
         "assistant.send": "Илгээх",
         "assistant.thinking": "Бодож байна…",
@@ -317,6 +321,10 @@ const TRANSLATIONS = {
         "source.claude": "AI · Claude",
         "source.rules": "Дүрмийн зөвлөмж",
         "source.local": "Офлайн хариу",
+        "action.added": "Нэмсэн: {title}",
+        "action.updated": "Зассан: {title}",
+        "action.completed": "Дууссан: {title}",
+        "action.failed": "Амжилтгүй: {error}",
 
         "footer.text": "AI Campus Assistant · Software Design Project 2026",
         "common.error": "Алдаа гарлаа."
@@ -451,9 +459,9 @@ const TRANSLATIONS = {
         "stats.colCount": "数量",
 
         "assistant.title": "🤖 AI Campus Assistant",
-        "assistant.description": "根据你未完成的作业，建议你先从哪一项开始。",
-        "assistant.greeting": "你好！👋 我会查看你未完成的作业，告诉你应该先做哪一项。",
-        "assistant.example": "例如：\"这周我应该先做什么？\"",
+        "assistant.description": "根据未完成的作业给出建议，也可以通过聊天添加、修改或完成作业。",
+        "assistant.greeting": "你好！👋 我会告诉你先做什么，也可以按你的要求直接添加作业或标记完成。",
+        "assistant.example": "例如：\"这周我应该先做什么？\"、\"帮我添加周五截止的数学作业\"",
         "assistant.placeholder": "请输入你的问题...",
         "assistant.send": "发送",
         "assistant.thinking": "思考中…",
@@ -463,6 +471,10 @@ const TRANSLATIONS = {
         "source.claude": "AI · Claude",
         "source.rules": "规则建议",
         "source.local": "离线回答",
+        "action.added": "已添加：{title}",
+        "action.updated": "已修改：{title}",
+        "action.completed": "已完成：{title}",
+        "action.failed": "失败：{error}",
 
         "footer.text": "AI Campus Assistant · 软件设计项目 2026",
         "common.error": "出现错误。"
@@ -597,9 +609,9 @@ const TRANSLATIONS = {
         "stats.colCount": "Количество",
 
         "assistant.title": "🤖 AI Campus Assistant",
-        "assistant.description": "Подскажет, с какого из невыполненных заданий начать.",
-        "assistant.greeting": "Здравствуйте! 👋 Я посмотрю ваши невыполненные задания и подскажу, с чего начать.",
-        "assistant.example": "Например: \"С чего начать на этой неделе?\"",
+        "assistant.description": "Советует, с чего начать, и может добавлять, изменять и отмечать задания прямо в чате.",
+        "assistant.greeting": "Здравствуйте! 👋 Подскажу, с чего начать, а по вашей просьбе сам добавлю задание или отмечу его выполненным.",
+        "assistant.example": "Например: \"С чего начать на этой неделе?\", \"Добавь домашку по математике до пятницы\"",
         "assistant.placeholder": "Введите вопрос...",
         "assistant.send": "Отправить",
         "assistant.thinking": "Думаю…",
@@ -609,6 +621,10 @@ const TRANSLATIONS = {
         "source.claude": "AI · Claude",
         "source.rules": "Совет по правилам",
         "source.local": "Офлайн-ответ",
+        "action.added": "Добавлено: {title}",
+        "action.updated": "Изменено: {title}",
+        "action.completed": "Выполнено: {title}",
+        "action.failed": "Ошибка: {error}",
 
         "footer.text": "AI Campus Assistant · Проект по проектированию ПО 2026",
         "common.error": "Произошла ошибка."
@@ -743,9 +759,9 @@ const TRANSLATIONS = {
         "stats.colCount": "Số lượng",
 
         "assistant.title": "🤖 AI Campus Assistant",
-        "assistant.description": "Gợi ý nên bắt đầu từ bài tập nào trong số bài chưa xong.",
-        "assistant.greeting": "Xin chào! 👋 Tôi sẽ xem các bài tập chưa xong và gợi ý bạn nên bắt đầu từ đâu.",
-        "assistant.example": "Ví dụ: \"Tuần này tôi nên bắt đầu từ bài nào?\"",
+        "assistant.description": "Gợi ý nên bắt đầu từ đâu và có thể thêm, sửa, hoàn thành bài tập ngay trong khung chat.",
+        "assistant.greeting": "Xin chào! 👋 Tôi sẽ gợi ý bạn nên bắt đầu từ đâu, và khi bạn yêu cầu, tôi có thể tự thêm bài tập hoặc đánh dấu hoàn thành.",
+        "assistant.example": "Ví dụ: \"Tuần này tôi nên bắt đầu từ bài nào?\", \"Thêm bài tập Toán hạn thứ Sáu\"",
         "assistant.placeholder": "Nhập câu hỏi của bạn...",
         "assistant.send": "Gửi",
         "assistant.thinking": "Đang suy nghĩ…",
@@ -755,6 +771,10 @@ const TRANSLATIONS = {
         "source.claude": "AI · Claude",
         "source.rules": "Gợi ý theo quy tắc",
         "source.local": "Trả lời ngoại tuyến",
+        "action.added": "Đã thêm: {title}",
+        "action.updated": "Đã sửa: {title}",
+        "action.completed": "Đã hoàn thành: {title}",
+        "action.failed": "Thất bại: {error}",
 
         "footer.text": "AI Campus Assistant · Dự án Thiết kế Phần mềm 2026",
         "common.error": "Đã xảy ra lỗi."
@@ -889,9 +909,9 @@ const TRANSLATIONS = {
         "stats.colCount": "Count",
 
         "assistant.title": "🤖 AI Campus Assistant",
-        "assistant.description": "Suggests which unfinished assignment to start first.",
-        "assistant.greeting": "Hello! 👋 I look at your unfinished assignments and suggest where to start.",
-        "assistant.example": "For example: \"What should I start this week?\"",
+        "assistant.description": "Suggests where to start and can add, edit or complete assignments right from the chat.",
+        "assistant.greeting": "Hello! 👋 I suggest where to start, and if you ask, I can add an assignment or mark one as done for you.",
+        "assistant.example": "For example: \"What should I start this week?\", \"Add a math homework due Friday\"",
         "assistant.placeholder": "Type your question...",
         "assistant.send": "Send",
         "assistant.thinking": "Thinking…",
@@ -901,6 +921,10 @@ const TRANSLATIONS = {
         "source.claude": "AI · Claude",
         "source.rules": "Rule-based advice",
         "source.local": "Offline answer",
+        "action.added": "Added: {title}",
+        "action.updated": "Updated: {title}",
+        "action.completed": "Completed: {title}",
+        "action.failed": "Failed: {error}",
 
         "footer.text": "AI Campus Assistant · Software Design Project 2026",
         "common.error": "Something went wrong."

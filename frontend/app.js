@@ -715,7 +715,39 @@ function renderMarkdown(container, markdown) {
     });
 }
 
-function addChatMessage(message, sender, source = null) {
+// AI агентын хийсэн үйлдлүүдийг (нэмсэн, зассан, дуусгасан) жагсаалтаар харуулна.
+function actionLabel(action) {
+    if (!action.ok) {
+        return { key: "action.failed", text: t("action.failed", { error: action.error || "" }) };
+    }
+
+    let key = "action.updated";
+    if (action.tool === "add_assignment") {
+        key = "action.added";
+    } else if (action.changed && action.changed.length === 1 && action.changed[0] === "completed" && action.completed) {
+        key = "action.completed";
+    }
+
+    return { key, text: t(key, { title: action.title }) };
+}
+
+function createActionList(actions) {
+    const list = document.createElement("ul");
+    list.className = "chat-actions";
+
+    actions.forEach(action => {
+        const item = document.createElement("li");
+        const { key, text } = actionLabel(action);
+        item.className = action.ok ? "chat-action" : "chat-action failed";
+        item.dataset.kind = key;
+        item.textContent = `${action.ok ? "✓" : "✕"} ${text}`;
+        list.appendChild(item);
+    });
+
+    return list;
+}
+
+function addChatMessage(message, sender, source = null, actions = []) {
     const element = document.createElement("div");
     element.classList.add("chat-message");
     element.classList.add(sender === "user" ? "user-message" : "bot-message");
@@ -724,6 +756,10 @@ function addChatMessage(message, sender, source = null) {
         element.textContent = message;
     } else {
         renderMarkdown(element, message);
+
+        if (actions.length > 0) {
+            element.appendChild(createActionList(actions));
+        }
 
         if (source) {
             const badge = document.createElement("span");
@@ -784,7 +820,14 @@ chatForm.addEventListener("submit", async event => {
         const data = await askAssistant(question);
         if (session !== chatSession) return; // хэрэглэгч гарсан
         pending.remove();
-        addChatMessage(data.answer, "bot", data.source);
+
+        const actions = data.actions || [];
+        addChatMessage(data.answer, "bot", data.source, actions);
+
+        // AI даалгавар өөрчилсөн бол жагсаалт, календарь, статистикийг шинэчилнэ.
+        if (actions.some(action => action.ok)) {
+            await refreshData();
+        }
     } catch (error) {
         if (session !== chatSession) return;
         console.error("Assistant алдаа:", error);

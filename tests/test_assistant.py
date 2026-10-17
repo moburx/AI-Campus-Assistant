@@ -96,15 +96,23 @@ def test_assistant_ignores_completed_assignments(client, user_headers, create_as
     assert data["answer"] == assistant.RULE_TEXT["en"]["empty"]
 
 
-def test_assistant_uses_gemini_when_available(client, user_headers, create_assignment, monkeypatch):
+def failing(*args):
+    raise RuntimeError("quota exceeded")
+
+
+def test_assistant_uses_agent_when_available(client, user_headers, create_assignment, monkeypatch):
     create_assignment(user_headers, title="Essay")
     sent = {}
 
-    def fake_gemini(message):
+    def fake_agent(message, executor):
         sent["message"] = message
         return "Start with Essay."
 
-    monkeypatch.setattr(assistant, "get_providers", lambda: [("gemini", fake_gemini)])
+    monkeypatch.setattr(
+        assistant,
+        "get_providers",
+        lambda: [("gemini", fake_agent, failing)],
+    )
 
     data = client.post(
         "/api/assistant",
@@ -112,22 +120,44 @@ def test_assistant_uses_gemini_when_available(client, user_headers, create_assig
         headers=user_headers,
     ).json()
 
-    assert data == {"answer": "Start with Essay.", "source": "gemini", "assignment_count": 1}
+    assert data == {
+        "answer": "Start with Essay.",
+        "source": "gemini",
+        "mode": "agent",
+        "actions": [],
+        "assignment_count": 1,
+    }
     assert '"title": "Essay"' in sent["message"]
     assert "reply_language: en" in sent["message"]
-    assert "Student question: What first?" in sent["message"]
+    assert "Student message: What first?" in sent["message"]
+
+
+def test_assistant_uses_plain_advice_when_agent_fails(client, user_headers, create_assignment, monkeypatch):
+    create_assignment(user_headers)
+
+    monkeypatch.setattr(
+        assistant,
+        "get_providers",
+        lambda: [("gemini", failing, lambda message: "Plain advice")],
+    )
+
+    data = client.post("/api/assistant", json={}, headers=user_headers).json()
+
+    assert data["source"] == "gemini"
+    assert data["mode"] == "advice"
+    assert data["answer"] == "Plain advice"
 
 
 def test_assistant_falls_back_when_provider_fails(client, user_headers, create_assignment, monkeypatch):
     create_assignment(user_headers)
 
-    def broken(message):
-        raise RuntimeError("quota exceeded")
-
     monkeypatch.setattr(
         assistant,
         "get_providers",
-        lambda: [("gemini", broken), ("claude", lambda message: "Claude answer")],
+        lambda: [
+            ("gemini", failing, failing),
+            ("claude", lambda message, executor: "Claude answer", failing),
+        ],
     )
 
     data = client.post("/api/assistant", json={}, headers=user_headers).json()
@@ -140,11 +170,12 @@ def test_assistant_falls_back_to_rules_on_empty_answers(client, user_headers, mo
     monkeypatch.setattr(
         assistant,
         "get_providers",
-        lambda: [("gemini", lambda message: "   ")],
+        lambda: [("gemini", lambda message, executor: "   ", lambda message: "")],
     )
 
     data = client.post("/api/assistant", json={}, headers=user_headers).json()
     assert data["source"] == "rules"
+    assert data["mode"] == "rules"
 
 
 def test_assistant_only_sends_own_assignments(client, make_user, create_assignment, monkeypatch):
@@ -154,15 +185,17 @@ def test_assistant_only_sends_own_assignments(client, make_user, create_assignme
     create_assignment(bob, title="Bob task")
     sent = {}
 
-    def fake(message):
+    def fake(message, executor):
         sent["message"] = message
+        sent["listed"] = executor.run("list_assignments", {})
         return "ok"
 
-    monkeypatch.setattr(assistant, "get_providers", lambda: [("gemini", fake)])
+    monkeypatch.setattr(assistant, "get_providers", lambda: [("gemini", fake, failing)])
     client.post("/api/assistant", json={}, headers=bob)
 
     assert "Bob task" in sent["message"]
     assert "Alice secret" not in sent["message"]
+    assert [item["title"] for item in sent["listed"]["assignments"]] == ["Bob task"]
 
 
 def test_assistant_question_too_long_returns_422(client, user_headers):
@@ -180,5 +213,5 @@ def test_get_providers_reads_environment(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "fake")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "fake")
 
-    names = [name for name, _ in assistant.get_providers()]
+    names = [provider[0] for provider in assistant.get_providers()]
     assert names == ["gemini", "claude"]

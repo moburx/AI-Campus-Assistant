@@ -1057,6 +1057,26 @@ button:disabled {
     font-style: italic;
 }
 
+.bot-message .chat-actions {
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.chat-action {
+    margin-top: 4px;
+    padding: 4px 10px;
+    border-radius: var(--radius-small);
+    background: #dcfce7;
+    color: #166534;
+    font-size: 13px;
+}
+
+.chat-action.failed {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
 .chat-source {
     display: inline-block;
     margin-top: 8px;
