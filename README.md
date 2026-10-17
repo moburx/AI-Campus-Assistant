@@ -93,7 +93,7 @@ pip install -r requirements.txt
 
 ### 5.4 환경 변수 설정
 
-`.env` 파일에 다음 환경 변수를 설정합니다.
+프로젝트 루트 디렉터리(`AI-Campus-Assistant/`)에 `.env` 파일을 만들고 다음 환경 변수를 설정합니다.
 
 ```dotenv
 JWT_SECRET_KEY=your_random_secret_key
