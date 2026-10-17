@@ -1,22 +1,32 @@
 // ========================================
-// AI Campus Assistant - Frontend
+// AI Campus Assistant - Frontend (нийтлэг хэсэг)
 // ========================================
+// Энд: API дуудлага, нэвтрэлт, даалгаврын жагсаалт, засах цонх, AI чат.
+// Хичээл → courses.js, календарь → calendar.js, статистик → stats.js,
+// эхлүүлэх → main.js
 
 const API_BASE = "http://127.0.0.1:8001/api";
 const TOKEN_KEY = "campus_token";
 const USER_KEY = "campus_user";
 
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+
 let assignments = [];
+let currentUser = null;
 
 // ---------- Элементүүд ----------
 const authSection = document.getElementById("auth-section");
 const appContent = document.getElementById("app-content");
+const mainNav = document.getElementById("main-nav");
 const userInfo = document.getElementById("user-info");
 const userNameLabel = document.getElementById("user-name");
 const logoutButton = document.getElementById("logout-button");
+const languageSelect = document.getElementById("language-select");
+const welcomeGreeting = document.getElementById("welcome-greeting");
 
 const loginForm = document.getElementById("login-form");
 const registerForm = document.getElementById("register-form");
+const registerLanguage = document.getElementById("register-language");
 const tabLogin = document.getElementById("tab-login");
 const tabRegister = document.getElementById("tab-register");
 const authMessage = document.getElementById("auth-message");
@@ -24,6 +34,14 @@ const authMessage = document.getElementById("auth-message");
 const assignmentForm = document.getElementById("assignment-form");
 const searchInput = document.getElementById("assignment-search");
 const statusFilter = document.getElementById("assignment-status");
+const courseFilter = document.getElementById("assignment-course-filter");
+const priorityFilter = document.getElementById("assignment-priority-filter");
+const sortSelect = document.getElementById("assignment-sort");
+
+const editDialog = document.getElementById("edit-dialog");
+const editForm = document.getElementById("edit-form");
+const editMessage = document.getElementById("edit-message");
+let editingAssignmentId = null;
 
 const chatForm = document.getElementById("chat-form");
 const chatInput = document.getElementById("chat-input");
@@ -32,7 +50,11 @@ const chatInitialHTML = chatMessages.innerHTML;
 
 // ---------- Token / session ----------
 function getToken() {
-    return localStorage.getItem(TOKEN_KEY);
+    try {
+        return localStorage.getItem(TOKEN_KEY);
+    } catch (error) {
+        return null;
+    }
 }
 
 function saveSession(token, user) {
@@ -41,17 +63,30 @@ function saveSession(token, user) {
 }
 
 function clearSession() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    try {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+    } catch (error) {
+        // localStorage ашиглах боломжгүй орчин
+    }
 }
 
 // ---------- API туслах функцууд ----------
-async function readError(response, fallback) {
+// Backend-ийн англи алдааны мессежийг сонгосон хэл рүү хөрвүүлнэ.
+const ERROR_TRANSLATIONS = {
+    "Username or email already exists.": "auth.userExists",
+    "Invalid username or password.": "auth.invalidLogin",
+    "A course with this name already exists.": "courses.exists",
+    "This course still has assignments.": "courses.hasAssignments"
+};
+
+async function readError(response, fallbackKey) {
     try {
         const data = await response.json();
 
         if (typeof data.detail === "string") {
-            return data.detail;
+            const key = ERROR_TRANSLATIONS[data.detail];
+            return key ? t(key) : data.detail;
         }
 
         if (Array.isArray(data.detail)) {
@@ -61,7 +96,7 @@ async function readError(response, fallback) {
         // JSON биш хариу байж болно
     }
 
-    return fallback;
+    return t(fallbackKey);
 }
 
 // Нэвтрээгүй хүсэлт (login, register)
@@ -93,10 +128,59 @@ async function apiFetch(path, options = {}) {
 
     if (response.status === 401) {
         logout();
-        throw new Error("Нэвтрэх хугацаа дууссан. Дахин нэвтэрнэ үү.");
+        showAuthMessage(t("auth.sessionExpired"));
+        throw new Error(t("auth.sessionExpired"));
     }
 
     return response;
+}
+
+// JSON буцаадаг хүсэлт. Алдаа гарвал орчуулсан мессежтэй Error шиднэ.
+async function apiJson(path, options = {}, fallbackKey = "common.error") {
+    const response = await apiFetch(path, options);
+
+    if (!response.ok) {
+        throw new Error(await readError(response, fallbackKey));
+    }
+
+    return response.status === 204 ? null : response.json();
+}
+
+// ---------- Огноо ----------
+function todayIso() {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${now.getFullYear()}-${month}-${day}`;
+}
+
+// Өнөөдрөөс хэдэн өдрийн дараа (сөрөг бол хэтэрсэн)
+function daysUntil(isoDate) {
+    const today = new Date(`${todayIso()}T00:00:00`);
+    const target = new Date(`${isoDate}T00:00:00`);
+    return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function dueLabel(item) {
+    if (item.completed) {
+        return t("due.done");
+    }
+
+    const days = daysUntil(item.deadline);
+
+    if (Number.isNaN(days)) return "";
+    if (days < 0) return t("due.overdue", { n: -days });
+    if (days === 0) return t("due.today");
+    return t("due.left", { n: days });
+}
+
+function dueState(item) {
+    if (item.completed) return "completed";
+
+    const days = daysUntil(item.deadline);
+    if (days < 0) return "overdue";
+    if (days <= 3) return "due-soon";
+    return "upcoming";
 }
 
 // ---------- Нэвтрэх хэсгийн UI ----------
@@ -118,27 +202,54 @@ function switchTab(tab) {
 function showAuth() {
     authSection.hidden = false;
     appContent.hidden = true;
+    mainNav.hidden = true;
     userInfo.hidden = true;
+    registerLanguage.value = currentLanguage;
+}
+
+function renderGreeting() {
+    if (currentUser) {
+        welcomeGreeting.textContent = t("welcome.greeting", { name: currentUser.username });
+    }
 }
 
 function showApp(user) {
+    currentUser = user;
     authSection.hidden = true;
     appContent.hidden = false;
+    mainNav.hidden = false;
     userInfo.hidden = false;
     userNameLabel.textContent = user.username;
+
+    // Хэрэглэгчийн хадгалсан хэлээр UI-г харуулна.
+    if (user.preferred_language && user.preferred_language !== currentLanguage) {
+        setLanguage(user.preferred_language);
+        languageSelect.value = currentLanguage;
+    }
+
+    renderGreeting();
 }
 
 function logout() {
     chatSession += 1;
     clearSession();
+    currentUser = null;
     assignments = [];
-    renderAssignments();
+    resetCourses();
+    resetStats();
+    renderAll();
     chatMessages.innerHTML = chatInitialHTML;
-    if (typeof chatSubmitButton !== "undefined" && chatSubmitButton) {
-        chatSubmitButton.disabled = false;
-    }
+    applyTranslations(chatMessages);
+    chatSubmitButton.disabled = false;
     searchInput.value = "";
     statusFilter.value = "all";
+    courseFilter.value = "all";
+    priorityFilter.value = "all";
+
+    if (editDialog.open) {
+        editDialog.close();
+    }
+
     showAuth();
 }
 
@@ -150,13 +261,13 @@ async function loginUser(username, password) {
     const response = await publicPost("/auth/login", { username, password });
 
     if (!response.ok) {
-        throw new Error(await readError(response, "Нэвтэрч чадсангүй."));
+        throw new Error(await readError(response, "auth.loginFailed"));
     }
 
     const data = await response.json();
     saveSession(data.access_token, data.user);
     showApp(data.user);
-    await loadAssignments();
+    await refreshData();
 }
 
 loginForm.addEventListener("submit", async event => {
@@ -182,14 +293,14 @@ registerForm.addEventListener("submit", async event => {
         email: document.getElementById("register-email").value.trim(),
         password: document.getElementById("register-password").value,
         country: document.getElementById("register-country").value.trim() || "Other",
-        preferred_language: document.getElementById("register-language").value
+        preferred_language: registerLanguage.value
     };
 
     try {
         const response = await publicPost("/auth/register", payload);
 
         if (!response.ok) {
-            throw new Error(await readError(response, "Бүртгүүлж чадсангүй."));
+            throw new Error(await readError(response, "auth.registerFailed"));
         }
 
         // Бүртгүүлсний дараа автоматаар нэвтрүүлнэ
@@ -201,41 +312,83 @@ registerForm.addEventListener("submit", async event => {
     }
 });
 
-// ---------- Даалгавар ----------
-async function loadAssignments() {
+// ---------- Хэл солих ----------
+languageSelect.addEventListener("change", async () => {
+    setLanguage(languageSelect.value);
+
+    if (!currentUser || !getToken()) {
+        return;
+    }
+
+    // Нэвтэрсэн бол сонголтыг профайлд хадгална (AI хариу ч энэ хэлээр гарна).
     try {
-        const response = await apiFetch("/assignments");
+        currentUser = await apiJson("/auth/me", {
+            method: "PATCH",
+            body: JSON.stringify({ preferred_language: currentLanguage })
+        });
+        localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
+    } catch (error) {
+        console.error("Хэл хадгалж чадсангүй:", error);
+    }
+});
 
-        if (!response.ok) {
-            throw new Error("Даалгавар уншиж чадсангүй.");
-        }
+// Хэл солигдоход JS-ээр зурсан бүх хэсгийг дахин зурна.
+document.addEventListener("languagechange", () => {
+    languageSelect.value = currentLanguage;
+    renderGreeting();
+    renderAll();
+});
 
-        assignments = await response.json();
-        renderAssignments();
+// ---------- Өгөгдөл ачаалах ----------
+async function loadAssignments() {
+    assignments = await apiJson("/assignments", {}, "assign.loadFailed");
+}
+
+// Даалгавар, хичээл, статистикийг зэрэг ачаалаад бүгдийг зурна.
+async function refreshData() {
+    try {
+        await Promise.all([loadAssignments(), loadCourses(), loadStats()]);
     } catch (error) {
         console.error("API алдаа:", error);
         if (getToken()) {
-            alert("Даалгавар уншиж чадсангүй. Backend ажиллаж байгаа эсэхийг шалгана уу.");
+            alert(t("assign.loadFailed"));
         }
     }
+
+    renderAll();
 }
 
-async function addAssignment(title, course, deadline) {
+function renderAll() {
+    renderAssignments();
+    renderCourses();
+    renderCalendar();
+    renderStats();
+}
+
+// ---------- Даалгавар ----------
+async function addAssignment(payload) {
     try {
-        const response = await apiFetch("/assignments", {
+        await apiJson("/assignments", {
             method: "POST",
-            body: JSON.stringify({ title, course, deadline })
-        });
+            body: JSON.stringify(payload)
+        }, "assign.saveFailed");
 
-        if (!response.ok) {
-            throw new Error(await readError(response, "Даалгавар нэмэхэд алдаа гарлаа."));
-        }
-
-        await loadAssignments();
+        await refreshData();
+        return true;
     } catch (error) {
         console.error(error);
         alert(error.message);
+        return false;
     }
+}
+
+async function updateAssignment(id, changes) {
+    await apiJson(`/assignments/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(changes)
+    }, "assign.saveFailed");
+
+    await refreshData();
 }
 
 async function toggleAssignment(id) {
@@ -243,16 +396,7 @@ async function toggleAssignment(id) {
     if (!assignment) return;
 
     try {
-        const response = await apiFetch(`/assignments/${id}`, {
-            method: "PATCH",
-            body: JSON.stringify({ completed: !assignment.completed })
-        });
-
-        if (!response.ok) {
-            throw new Error("Төлөв шинэчилж чадсангүй.");
-        }
-
-        await loadAssignments();
+        await updateAssignment(id, { completed: !assignment.completed });
     } catch (error) {
         console.error(error);
         alert(error.message);
@@ -260,156 +404,257 @@ async function toggleAssignment(id) {
 }
 
 async function deleteAssignment(id) {
-    if (!confirm("Энэ даалгаврыг устгах уу?")) return;
+    if (!confirm(t("assign.confirmDelete"))) return;
 
     try {
-        const response = await apiFetch(`/assignments/${id}`, {
-            method: "DELETE"
-        });
-
-        if (!response.ok) {
-            throw new Error("Даалгавар устгаж чадсангүй.");
-        }
-
-        await loadAssignments();
+        await apiJson(`/assignments/${id}`, { method: "DELETE" }, "assign.deleteFailed");
+        await refreshData();
     } catch (error) {
         console.error(error);
         alert(error.message);
     }
 }
 
-function renderAssignments() {
-    const list = document.getElementById("assignment-list");
-    const totalCount = document.getElementById("total-count");
-    const completedCount = document.getElementById("completed-count");
-    const remainingCount = document.getElementById("remaining-count");
-
-    const completed = assignments.filter(item => item.completed).length;
-
-    totalCount.textContent = assignments.length;
-    completedCount.textContent = completed;
-    remainingCount.textContent = assignments.length - completed;
-
+function getFilteredAssignments() {
     const searchText = searchInput.value.trim().toLowerCase();
     const selectedStatus = statusFilter.value;
+    const selectedCourse = courseFilter.value;
+    const selectedPriority = priorityFilter.value;
 
     const filtered = assignments.filter(item => {
         const matchesSearch =
             item.title.toLowerCase().includes(searchText) ||
-            item.course.toLowerCase().includes(searchText);
+            item.course.toLowerCase().includes(searchText) ||
+            (item.notes || "").toLowerCase().includes(searchText);
 
         const matchesStatus =
             selectedStatus === "all" ||
             (selectedStatus === "completed" && item.completed) ||
             (selectedStatus === "incomplete" && !item.completed);
 
-        return matchesSearch && matchesStatus;
+        const matchesCourse =
+            selectedCourse === "all" || String(item.course_id) === selectedCourse;
+
+        const matchesPriority =
+            selectedPriority === "all" || item.priority === selectedPriority;
+
+        return matchesSearch && matchesStatus && matchesCourse && matchesPriority;
     });
+
+    return sortAssignments(filtered, sortSelect.value);
+}
+
+function sortAssignments(list, mode) {
+    const byDeadline = (a, b) => a.deadline.localeCompare(b.deadline);
+    const byPriority = (a, b) =>
+        (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1);
+
+    return [...list].sort((a, b) => {
+        // Дууссан даалгаврууд үргэлж доор
+        if (a.completed !== b.completed) {
+            return a.completed ? 1 : -1;
+        }
+
+        if (mode === "newest") {
+            return b.id - a.id;
+        }
+
+        if (mode === "priority") {
+            return byPriority(a, b) || byDeadline(a, b);
+        }
+
+        return byDeadline(a, b) || byPriority(a, b);
+    });
+}
+
+function createPriorityBadge(priority) {
+    const badge = document.createElement("span");
+    badge.className = `priority-badge priority-${priority}`;
+    badge.textContent = t(`priority.${priority}`);
+    return badge;
+}
+
+function createCourseChip(name, color) {
+    const chip = document.createElement("span");
+    chip.className = "course-chip";
+
+    const dot = document.createElement("span");
+    dot.className = "course-dot";
+    dot.style.backgroundColor = color || "#94a3b8";
+
+    chip.append(dot, document.createTextNode(name));
+    return chip;
+}
+
+function createAssignmentElement(item) {
+    const article = document.createElement("article");
+    article.className = `assignment-item ${dueState(item)}`;
+    article.dataset.id = item.id;
+
+    const info = document.createElement("div");
+    info.className = "assignment-info";
+
+    const titleRow = document.createElement("div");
+    titleRow.className = "assignment-title-row";
+
+    const title = document.createElement("h3");
+    title.textContent = item.title;
+    titleRow.append(title, createPriorityBadge(item.priority));
+
+    const meta = document.createElement("p");
+    meta.className = "assignment-meta";
+
+    const deadline = document.createElement("span");
+    deadline.textContent = `${formatDate(item.deadline)} · ${dueLabel(item)}`;
+
+    meta.append(createCourseChip(item.course, item.course_color), deadline);
+    info.append(titleRow, meta);
+
+    if (item.notes) {
+        const notes = document.createElement("p");
+        notes.className = "assignment-notes";
+        notes.textContent = item.notes;
+        info.appendChild(notes);
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "assignment-actions";
+
+    const completeButton = document.createElement("button");
+    completeButton.type = "button";
+    completeButton.textContent = item.completed ? t("assign.undo") : t("assign.done");
+    completeButton.addEventListener("click", () => toggleAssignment(item.id));
+
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "secondary-button";
+    editButton.textContent = t("assign.edit");
+    editButton.addEventListener("click", () => openEditDialog(item.id));
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "delete-button";
+    deleteButton.textContent = t("assign.delete");
+    deleteButton.addEventListener("click", () => deleteAssignment(item.id));
+
+    actions.append(completeButton, editButton, deleteButton);
+    article.append(info, actions);
+    return article;
+}
+
+function renderAssignments() {
+    const list = document.getElementById("assignment-list");
+    const completed = assignments.filter(item => item.completed).length;
+
+    document.getElementById("total-count").textContent = assignments.length;
+    document.getElementById("completed-count").textContent = completed;
+    document.getElementById("remaining-count").textContent = assignments.length - completed;
 
     list.replaceChildren();
 
     if (assignments.length === 0) {
         const message = document.createElement("p");
-        message.textContent = "Одоогоор даалгавар алга.";
+        message.className = "empty-message";
+        message.textContent = t("assign.empty");
         list.appendChild(message);
         return;
     }
+
+    const filtered = getFilteredAssignments();
 
     if (filtered.length === 0) {
         const message = document.createElement("p");
-        message.textContent = "Тохирох даалгавар олдсонгүй.";
+        message.className = "empty-message";
+        message.textContent = t("assign.noMatch");
         list.appendChild(message);
         return;
     }
 
-    filtered.forEach(item => {
-        const article = document.createElement("article");
-        article.className = "assignment-item";
-
-        if (item.completed) {
-            article.classList.add("completed");
-        } else {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            const deadlineDate = new Date(item.deadline + "T00:00:00");
-            const daysLeft = Math.round(
-                (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-            );
-
-            if (daysLeft < 0) {
-                article.classList.add("overdue");
-            } else if (daysLeft <= 3) {
-                article.classList.add("due-soon");
-            } else {
-                article.classList.add("upcoming");
-            }
-        }
-
-        const info = document.createElement("div");
-
-        const title = document.createElement("h3");
-        title.textContent = item.title;
-
-        const course = document.createElement("p");
-        course.textContent = `Хичээл: ${item.course}`;
-
-        const deadline = document.createElement("p");
-        deadline.textContent = `Дуусах хугацаа: ${item.deadline}`;
-
-        info.append(title, course, deadline);
-
-        const actions = document.createElement("div");
-        actions.className = "assignment-actions";
-
-        const completeButton = document.createElement("button");
-        completeButton.type = "button";
-        completeButton.textContent = item.completed ? "Буцаах" : "Дууссан";
-        completeButton.addEventListener("click", () => toggleAssignment(item.id));
-
-        const deleteButton = document.createElement("button");
-        deleteButton.type = "button";
-        deleteButton.className = "delete-button";
-        deleteButton.textContent = "Устгах";
-        deleteButton.addEventListener("click", () => deleteAssignment(item.id));
-
-        actions.append(completeButton, deleteButton);
-        article.append(info, actions);
-        list.appendChild(article);
-    });
+    filtered.forEach(item => list.appendChild(createAssignmentElement(item)));
 }
 
 assignmentForm.addEventListener("submit", async event => {
     event.preventDefault();
 
-    const title = document.getElementById("assignment-title").value.trim();
-    const course = document.getElementById("assignment-course").value.trim();
-    const deadline = document.getElementById("assignment-deadline").value;
+    const payload = {
+        title: document.getElementById("assignment-title").value.trim(),
+        course: document.getElementById("assignment-course").value.trim(),
+        deadline: document.getElementById("assignment-deadline").value,
+        priority: document.getElementById("assignment-priority").value,
+        notes: document.getElementById("assignment-notes").value.trim()
+    };
 
-    if (!title || !course || !deadline) {
-        alert("Бүх талбарыг бөглөнө үү.");
+    if (!payload.title || !payload.course || !payload.deadline) {
+        alert(t("assign.fillAll"));
         return;
     }
 
-    await addAssignment(title, course, deadline);
-    assignmentForm.reset();
+    if (await addAssignment(payload)) {
+        assignmentForm.reset();
+        document.getElementById("assignment-priority").value = "medium";
+    }
 });
 
-searchInput.addEventListener("input", renderAssignments);
-statusFilter.addEventListener("change", renderAssignments);
+[searchInput].forEach(element => element.addEventListener("input", renderAssignments));
+[statusFilter, courseFilter, priorityFilter, sortSelect].forEach(element =>
+    element.addEventListener("change", renderAssignments)
+);
+
+// ---------- Даалгавар засах цонх ----------
+function openEditDialog(id) {
+    const item = assignments.find(assignment => assignment.id === id);
+    if (!item) return;
+
+    editingAssignmentId = id;
+    document.getElementById("edit-title").value = item.title;
+    document.getElementById("edit-course").value = item.course;
+    document.getElementById("edit-deadline").value = item.deadline;
+    document.getElementById("edit-priority").value = item.priority;
+    document.getElementById("edit-notes").value = item.notes || "";
+    editMessage.textContent = "";
+
+    editDialog.showModal();
+    document.getElementById("edit-title").focus();
+}
+
+document.getElementById("edit-cancel").addEventListener("click", () => {
+    editDialog.close();
+});
+
+editForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const changes = {
+        title: document.getElementById("edit-title").value.trim(),
+        course: document.getElementById("edit-course").value.trim(),
+        deadline: document.getElementById("edit-deadline").value,
+        priority: document.getElementById("edit-priority").value,
+        notes: document.getElementById("edit-notes").value.trim()
+    };
+
+    if (!changes.title || !changes.course || !changes.deadline) {
+        editMessage.textContent = t("assign.fillAll");
+        return;
+    }
+
+    try {
+        await updateAssignment(editingAssignmentId, changes);
+        editDialog.close();
+    } catch (error) {
+        console.error(error);
+        editMessage.textContent = error.message;
+    }
+});
+
+editDialog.addEventListener("close", () => {
+    editingAssignmentId = null;
+});
 
 // ---------- Чат ----------
 // Гарах (logout) бүрд нэмэгдэнэ. Хариу ирэхээс өмнө хэрэглэгч гарсан бол
 // хуучин хэрэглэгчийн хариуг шинэ хэрэглэгчид харуулахгүй.
 let chatSession = 0;
-const chatSubmitButton = chatForm.querySelector("button[type='submit'], button");
-
-const SOURCE_LABELS = {
-    gemini: "AI · Gemini",
-    claude: "AI · Claude",
-    rules: "Дүрмийн зөвлөмж",
-    local: "Офлайн хариу"
-};
+const chatSubmitButton = chatForm.querySelector("button[type='submit']");
 
 // "**тод**" хэсгийг <strong> болгоно. HTML-ийг шууд оруулахгүй (XSS-ээс хамгаална).
 function appendInline(parent, text) {
@@ -483,7 +728,8 @@ function addChatMessage(message, sender, source = null) {
         if (source) {
             const badge = document.createElement("span");
             badge.className = `chat-source chat-source-${source}`;
-            badge.textContent = SOURCE_LABELS[source] || source;
+            badge.dataset.i18n = `source.${source}`;
+            badge.textContent = t(`source.${source}`);
             element.appendChild(badge);
         }
     }
@@ -493,58 +739,30 @@ function addChatMessage(message, sender, source = null) {
     return element;
 }
 
-// Сервертэй холбогдож чадахгүй үед ашиглах хуучин, офлайн хариу
-function generateAssistantResponse(question) {
-    const text = question.toLowerCase().trim();
+// Сервертэй холбогдож чадахгүй үед ачаалсан даалгавраас товч тойм гаргана.
+function generateOfflineAnswer() {
+    const incomplete = sortAssignments(
+        assignments.filter(task => !task.completed),
+        "deadline"
+    );
 
-    const incompleteTasks = assignments.filter(task => !task.completed);
-    const completedTasks = assignments.filter(task => task.completed);
+    const lines = [t("assistant.offline", { n: incomplete.length })];
 
-    if (text.includes("хэдэн") && (text.includes("даалгавар") || text.includes("task"))) {
-        return `Нийт ${assignments.length} даалгавар байна. Дууссан: ${completedTasks.length}, үлдсэн: ${incompleteTasks.length}.`;
+    if (incomplete.length > 0) {
+        lines.push(t("assistant.offlineNearest", {
+            title: incomplete[0].title,
+            date: formatDate(incomplete[0].deadline)
+        }));
     }
 
-    if (text.includes("дууссан") || text.includes("completed")) {
-        if (completedTasks.length === 0) {
-            return "Одоогоор дууссан даалгавар алга байна.";
-        }
-        return "Дууссан даалгаврууд: " + completedTasks.map(task => task.title).join(", ");
-    }
-
-    if (text.includes("үлдсэн") || text.includes("дуусаагүй") || text.includes("incomplete")) {
-        if (incompleteTasks.length === 0) {
-            return "Бүх даалгавар дууссан байна. Баяр хүргэе! 🎉";
-        }
-        return "Дуусаагүй даалгаврууд: " + incompleteTasks.map(task => task.title).join(", ");
-    }
-
-    if (text.includes("ойрын") || text.includes("хугацаа") || text.includes("deadline")) {
-        const sorted = incompleteTasks
-            .filter(task => task.deadline)
-            .sort((a, b) => a.deadline.localeCompare(b.deadline));
-
-        if (sorted.length === 0) {
-            return "Хугацаатай дуусаагүй даалгавар олдсонгүй.";
-        }
-
-        const task = sorted[0];
-        return `Хамгийн ойрын хугацаатай даалгавар: ${task.title}. Дуусах хугацаа: ${task.deadline}.`;
-    }
-
-    return "Сервертэй холбогдож чадсангүй. Backend ажиллаж байгаа эсэхийг шалгана уу.";
+    return lines.join("\n");
 }
 
 async function askAssistant(question) {
-    const response = await apiFetch("/assistant", {
+    return apiJson("/assistant", {
         method: "POST",
         body: JSON.stringify({ question })
     });
-
-    if (!response.ok) {
-        throw new Error(await readError(response, "AI туслах хариулж чадсангүй."));
-    }
-
-    return response.json();
 }
 
 chatForm.addEventListener("submit", async event => {
@@ -558,7 +776,7 @@ chatForm.addEventListener("submit", async event => {
     chatInput.focus();
 
     const session = chatSession;
-    const pending = addChatMessage("Бодож байна…", "bot");
+    const pending = addChatMessage(t("assistant.thinking"), "bot");
     pending.classList.add("pending");
     chatSubmitButton.disabled = true;
 
@@ -573,7 +791,7 @@ chatForm.addEventListener("submit", async event => {
         pending.remove();
         // Нэвтрэх хугацаа дууссан бол apiFetch аль хэдийн logout хийсэн
         if (getToken()) {
-            addChatMessage(generateAssistantResponse(question), "bot", "local");
+            addChatMessage(generateOfflineAnswer(), "bot", "local");
         }
     } finally {
         if (session === chatSession) {
@@ -581,29 +799,3 @@ chatForm.addEventListener("submit", async event => {
         }
     }
 });
-
-// ---------- Эхлүүлэх ----------
-async function init() {
-    if (!getToken()) {
-        showAuth();
-        return;
-    }
-
-    try {
-        const response = await apiFetch("/auth/me");
-
-        if (!response.ok) {
-            throw new Error("Хэрэглэгчийн мэдээлэл авч чадсангүй.");
-        }
-
-        const user = await response.json();
-        localStorage.setItem(USER_KEY, JSON.stringify(user));
-        showApp(user);
-        await loadAssignments();
-    } catch (error) {
-        console.error(error);
-        showAuth();
-    }
-}
-
-init();

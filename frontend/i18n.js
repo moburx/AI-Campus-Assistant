@@ -1,0 +1,1060 @@
+// ========================================
+// AI Campus Assistant - Олон хэлний (i18n) тохиргоо
+// ========================================
+// HTML дээр:  data-i18n="түлхүүр"              → textContent
+//             data-i18n-placeholder="түлхүүр"  → placeholder
+//             data-i18n-title="түлхүүр"        → title, aria-label
+// JS дээр:    t("түлхүүр", { n: 3 })           → "{n}"-ийг орлуулна
+
+const SUPPORTED_LANGUAGES = ["ko", "mn", "zh", "ru", "vi", "en"];
+const DEFAULT_LANGUAGE = "ko";
+const LANGUAGE_KEY = "campus_language";
+
+const LANGUAGE_NAMES = {
+    ko: "한국어",
+    mn: "Монгол",
+    zh: "中文",
+    ru: "Русский",
+    vi: "Tiếng Việt",
+    en: "English"
+};
+
+// Огноо, сарын нэрийг Intl-ээр тухайн хэлээр гаргахад ашиглана.
+const LOCALES = {
+    ko: "ko-KR",
+    mn: "mn-MN",
+    zh: "zh-CN",
+    ru: "ru-RU",
+    vi: "vi-VN",
+    en: "en-US"
+};
+
+const TRANSLATIONS = {
+    // ---------------- 한국어 ----------------
+    ko: {
+        "nav.home": "홈",
+        "nav.assignments": "과제",
+        "nav.courses": "과목",
+        "nav.calendar": "캘린더",
+        "nav.stats": "통계",
+        "nav.assistant": "AI 도우미",
+        "header.language": "언어",
+        "header.logout": "로그아웃",
+
+        "auth.welcome": "🔐 환영합니다",
+        "auth.loginTab": "로그인",
+        "auth.registerTab": "회원가입",
+        "auth.username": "사용자 이름",
+        "auth.usernameHint": "사용자 이름 (3~30자)",
+        "auth.password": "비밀번호",
+        "auth.passwordHint": "비밀번호 (8자 이상)",
+        "auth.email": "이메일",
+        "auth.country": "국가",
+        "auth.language": "언어",
+        "auth.loginButton": "로그인",
+        "auth.registerButton": "회원가입",
+        "auth.loginFailed": "로그인에 실패했습니다.",
+        "auth.registerFailed": "회원가입에 실패했습니다.",
+        "auth.sessionExpired": "로그인 시간이 만료되었습니다. 다시 로그인해 주세요.",
+        "auth.userExists": "이미 사용 중인 사용자 이름 또는 이메일입니다.",
+        "auth.invalidLogin": "사용자 이름 또는 비밀번호가 올바르지 않습니다.",
+
+        "welcome.subtitle": "YOUR SMART CAMPUS COMPANION",
+        "welcome.greeting": "안녕하세요, {name}님! 👋",
+        "welcome.text": "수업, 과제, 일정을 한곳에서 관리하세요.",
+        "welcome.start": "과제 추가하기",
+
+        "dashboard.title": "내 대시보드",
+        "dashboard.remaining": "남은 과제",
+        "dashboard.dueWeek": "7일 이내 마감",
+        "dashboard.overdue": "기한 초과",
+        "dashboard.rate": "완료율",
+
+        "assign.title": "📝 과제 관리",
+        "assign.name": "과제명",
+        "assign.course": "과목명",
+        "assign.deadline": "마감일",
+        "assign.priority": "중요도",
+        "assign.notes": "메모",
+        "assign.notesPlaceholder": "선택 사항",
+        "assign.add": "+ 과제 추가",
+        "assign.total": "전체",
+        "assign.completed": "완료",
+        "assign.remaining": "남음",
+        "assign.search": "🔎 과제명 또는 과목명으로 검색...",
+        "assign.empty": "아직 과제가 없습니다.",
+        "assign.noMatch": "조건에 맞는 과제가 없습니다.",
+        "assign.done": "완료",
+        "assign.undo": "되돌리기",
+        "assign.edit": "수정",
+        "assign.delete": "삭제",
+        "assign.confirmDelete": "이 과제를 삭제할까요?",
+        "assign.fillAll": "모든 필수 항목을 입력해 주세요.",
+        "assign.loadFailed": "과제를 불러오지 못했습니다. 백엔드가 실행 중인지 확인해 주세요.",
+        "assign.saveFailed": "과제를 저장하지 못했습니다.",
+        "assign.deleteFailed": "과제를 삭제하지 못했습니다.",
+
+        "filter.allStatus": "모든 과제",
+        "filter.incomplete": "미완료",
+        "filter.completed": "완료",
+        "filter.allCourses": "모든 과목",
+        "filter.allPriorities": "모든 중요도",
+        "sort.deadline": "정렬: 마감일",
+        "sort.priority": "정렬: 중요도",
+        "sort.newest": "정렬: 최신순",
+
+        "due.overdue": "{n}일 지남",
+        "due.today": "오늘 마감",
+        "due.left": "{n}일 남음",
+        "due.done": "완료됨",
+
+        "priority.high": "높음",
+        "priority.medium": "보통",
+        "priority.low": "낮음",
+
+        "edit.title": "과제 수정",
+        "edit.save": "저장",
+        "edit.cancel": "취소",
+
+        "courses.title": "📚 과목 관리",
+        "courses.description": "과제를 추가하면 과목이 자동으로 만들어집니다. 여기에서 이름과 색상을 바꿀 수 있습니다.",
+        "courses.name": "과목명",
+        "courses.color": "색상",
+        "courses.add": "+ 과목 추가",
+        "courses.empty": "아직 과목이 없습니다.",
+        "courses.count": "{done}/{total} 완료",
+        "courses.rename": "이름 변경",
+        "courses.delete": "삭제",
+        "courses.renamePrompt": "새 과목명을 입력하세요.",
+        "courses.confirmDelete": "이 과목을 삭제할까요?",
+        "courses.hasAssignments": "과제가 있는 과목은 삭제할 수 없습니다.",
+        "courses.exists": "같은 이름의 과목이 이미 있습니다.",
+        "courses.saveFailed": "과목을 저장하지 못했습니다.",
+
+        "calendar.title": "📅 캘린더",
+        "calendar.prev": "이전 달",
+        "calendar.next": "다음 달",
+        "calendar.today": "오늘",
+        "calendar.selected": "{date} 마감 과제",
+        "calendar.noItems": "이 날 마감인 과제가 없습니다.",
+        "calendar.more": "+{n}개 더",
+
+        "stats.title": "📊 통계",
+        "stats.total": "전체 과제",
+        "stats.completed": "완료",
+        "stats.overdue": "기한 초과",
+        "stats.rate": "완료율",
+        "stats.weekly": "주별 완료한 과제",
+        "stats.weeklyHint": "최근 8주",
+        "stats.upcoming": "앞으로 7일간 마감",
+        "stats.byCourse": "과목별 진행률",
+        "stats.byPriority": "중요도별 현황",
+        "stats.noData": "아직 데이터가 없습니다.",
+        "stats.loadFailed": "통계를 불러오지 못했습니다.",
+        "stats.weekOf": "{date} 주",
+        "stats.items": "{n}개",
+        "stats.showTable": "표로 보기",
+        "stats.hideTable": "차트로 보기",
+        "stats.colPeriod": "기간",
+        "stats.colCount": "개수",
+
+        "assistant.title": "🤖 AI Campus Assistant",
+        "assistant.description": "남은 과제를 바탕으로 무엇부터 시작할지 조언해 드립니다.",
+        "assistant.greeting": "안녕하세요! 👋 남은 과제를 보고 무엇부터 시작하면 좋을지 알려드릴게요.",
+        "assistant.example": "예: \"이번 주에 무엇부터 시작해야 할까요?\"",
+        "assistant.placeholder": "질문을 입력하세요...",
+        "assistant.send": "보내기",
+        "assistant.thinking": "생각 중…",
+        "assistant.offline": "서버에 연결할 수 없어 간단한 요약을 보여드립니다. 남은 과제: {n}개.",
+        "assistant.offlineNearest": "가장 가까운 마감: {title} ({date})",
+        "source.gemini": "AI · Gemini",
+        "source.claude": "AI · Claude",
+        "source.rules": "규칙 기반 조언",
+        "source.local": "오프라인 답변",
+
+        "footer.text": "AI Campus Assistant · 소프트웨어설계 프로젝트 2026",
+        "common.error": "문제가 발생했습니다."
+    },
+
+    // ---------------- Монгол ----------------
+    mn: {
+        "nav.home": "Нүүр",
+        "nav.assignments": "Даалгавар",
+        "nav.courses": "Хичээл",
+        "nav.calendar": "Календарь",
+        "nav.stats": "Статистик",
+        "nav.assistant": "AI туслах",
+        "header.language": "Хэл",
+        "header.logout": "Гарах",
+
+        "auth.welcome": "🔐 Тавтай морил",
+        "auth.loginTab": "Нэвтрэх",
+        "auth.registerTab": "Бүртгүүлэх",
+        "auth.username": "Хэрэглэгчийн нэр",
+        "auth.usernameHint": "Хэрэглэгчийн нэр (3-30 тэмдэгт)",
+        "auth.password": "Нууц үг",
+        "auth.passwordHint": "Нууц үг (хамгийн багадаа 8 тэмдэгт)",
+        "auth.email": "Имэйл",
+        "auth.country": "Улс",
+        "auth.language": "Хэл",
+        "auth.loginButton": "Нэвтрэх",
+        "auth.registerButton": "Бүртгүүлэх",
+        "auth.loginFailed": "Нэвтэрч чадсангүй.",
+        "auth.registerFailed": "Бүртгүүлж чадсангүй.",
+        "auth.sessionExpired": "Нэвтрэх хугацаа дууссан. Дахин нэвтэрнэ үү.",
+        "auth.userExists": "Энэ хэрэглэгчийн нэр эсвэл имэйл бүртгэлтэй байна.",
+        "auth.invalidLogin": "Хэрэглэгчийн нэр эсвэл нууц үг буруу байна.",
+
+        "welcome.subtitle": "YOUR SMART CAMPUS COMPANION",
+        "welcome.greeting": "Сайн байна уу, {name}! 👋",
+        "welcome.text": "Хичээл, даалгавар, хуваариа нэг дороос удирдаарай.",
+        "welcome.start": "Даалгавар нэмэх",
+
+        "dashboard.title": "Миний самбар",
+        "dashboard.remaining": "Үлдсэн даалгавар",
+        "dashboard.dueWeek": "7 хоногт дуусах",
+        "dashboard.overdue": "Хугацаа хэтэрсэн",
+        "dashboard.rate": "Гүйцэтгэл",
+
+        "assign.title": "📝 Даалгаврын удирдлага",
+        "assign.name": "Даалгаврын нэр",
+        "assign.course": "Хичээлийн нэр",
+        "assign.deadline": "Дуусах хугацаа",
+        "assign.priority": "Ач холбогдол",
+        "assign.notes": "Тэмдэглэл",
+        "assign.notesPlaceholder": "Заавал биш",
+        "assign.add": "+ Даалгавар нэмэх",
+        "assign.total": "Нийт",
+        "assign.completed": "Дууссан",
+        "assign.remaining": "Үлдсэн",
+        "assign.search": "🔎 Даалгавар эсвэл хичээлийн нэрээр хайх...",
+        "assign.empty": "Одоогоор даалгавар алга.",
+        "assign.noMatch": "Тохирох даалгавар олдсонгүй.",
+        "assign.done": "Дууссан",
+        "assign.undo": "Буцаах",
+        "assign.edit": "Засах",
+        "assign.delete": "Устгах",
+        "assign.confirmDelete": "Энэ даалгаврыг устгах уу?",
+        "assign.fillAll": "Шаардлагатай бүх талбарыг бөглөнө үү.",
+        "assign.loadFailed": "Даалгавар уншиж чадсангүй. Backend ажиллаж байгаа эсэхийг шалгана уу.",
+        "assign.saveFailed": "Даалгаврыг хадгалж чадсангүй.",
+        "assign.deleteFailed": "Даалгаврыг устгаж чадсангүй.",
+
+        "filter.allStatus": "Бүх даалгавар",
+        "filter.incomplete": "Дуусаагүй",
+        "filter.completed": "Дууссан",
+        "filter.allCourses": "Бүх хичээл",
+        "filter.allPriorities": "Бүх ач холбогдол",
+        "sort.deadline": "Эрэмбэ: хугацаа",
+        "sort.priority": "Эрэмбэ: ач холбогдол",
+        "sort.newest": "Эрэмбэ: шинэ нь эхэнд",
+
+        "due.overdue": "{n} хоногоор хэтэрсэн",
+        "due.today": "Өнөөдөр дуусна",
+        "due.left": "{n} хоног үлдсэн",
+        "due.done": "Дууссан",
+
+        "priority.high": "Өндөр",
+        "priority.medium": "Дунд",
+        "priority.low": "Бага",
+
+        "edit.title": "Даалгавар засах",
+        "edit.save": "Хадгалах",
+        "edit.cancel": "Болих",
+
+        "courses.title": "📚 Хичээлүүд",
+        "courses.description": "Даалгавар нэмэхэд хичээл автоматаар үүснэ. Энд нэр, өнгийг нь сольж болно.",
+        "courses.name": "Хичээлийн нэр",
+        "courses.color": "Өнгө",
+        "courses.add": "+ Хичээл нэмэх",
+        "courses.empty": "Одоогоор хичээл алга.",
+        "courses.count": "{done}/{total} дууссан",
+        "courses.rename": "Нэр солих",
+        "courses.delete": "Устгах",
+        "courses.renamePrompt": "Хичээлийн шинэ нэрийг оруулна уу.",
+        "courses.confirmDelete": "Энэ хичээлийг устгах уу?",
+        "courses.hasAssignments": "Даалгавартай хичээлийг устгах боломжгүй.",
+        "courses.exists": "Ийм нэртэй хичээл аль хэдийн байна.",
+        "courses.saveFailed": "Хичээлийг хадгалж чадсангүй.",
+
+        "calendar.title": "📅 Календарь",
+        "calendar.prev": "Өмнөх сар",
+        "calendar.next": "Дараагийн сар",
+        "calendar.today": "Өнөөдөр",
+        "calendar.selected": "{date}-нд дуусах даалгавар",
+        "calendar.noItems": "Энэ өдөр дуусах даалгавар алга.",
+        "calendar.more": "+{n} бусад",
+
+        "stats.title": "📊 Статистик",
+        "stats.total": "Нийт даалгавар",
+        "stats.completed": "Дууссан",
+        "stats.overdue": "Хугацаа хэтэрсэн",
+        "stats.rate": "Гүйцэтгэл",
+        "stats.weekly": "Долоо хоног бүр дуусгасан даалгавар",
+        "stats.weeklyHint": "Сүүлийн 8 долоо хоног",
+        "stats.upcoming": "Ойрын 7 хоногт дуусах",
+        "stats.byCourse": "Хичээл тус бүрийн явц",
+        "stats.byPriority": "Ач холбогдлоор",
+        "stats.noData": "Одоогоор өгөгдөл алга.",
+        "stats.loadFailed": "Статистик уншиж чадсангүй.",
+        "stats.weekOf": "{date}-ний долоо хоног",
+        "stats.items": "{n} даалгавар",
+        "stats.showTable": "Хүснэгтээр харах",
+        "stats.hideTable": "Графикаар харах",
+        "stats.colPeriod": "Хугацаа",
+        "stats.colCount": "Тоо",
+
+        "assistant.title": "🤖 AI Campus Assistant",
+        "assistant.description": "Дуусаагүй даалгавруудаас тань харж юунаас эхлэхийг зөвлөнө.",
+        "assistant.greeting": "Сайн байна уу! 👋 Би таны дуусаагүй даалгавруудыг харж, юунаас эхлэхийг зөвлөнө.",
+        "assistant.example": "Жишээ нь: \"Энэ долоо хоногт юунаас эхлэх вэ?\"",
+        "assistant.placeholder": "Асуултаа энд бичнэ үү...",
+        "assistant.send": "Илгээх",
+        "assistant.thinking": "Бодож байна…",
+        "assistant.offline": "Сервертэй холбогдож чадсангүй, товч тойм харуулж байна. Үлдсэн даалгавар: {n}.",
+        "assistant.offlineNearest": "Хамгийн ойрын хугацаа: {title} ({date})",
+        "source.gemini": "AI · Gemini",
+        "source.claude": "AI · Claude",
+        "source.rules": "Дүрмийн зөвлөмж",
+        "source.local": "Офлайн хариу",
+
+        "footer.text": "AI Campus Assistant · Software Design Project 2026",
+        "common.error": "Алдаа гарлаа."
+    },
+
+    // ---------------- 中文 ----------------
+    zh: {
+        "nav.home": "首页",
+        "nav.assignments": "作业",
+        "nav.courses": "课程",
+        "nav.calendar": "日历",
+        "nav.stats": "统计",
+        "nav.assistant": "AI 助手",
+        "header.language": "语言",
+        "header.logout": "退出登录",
+
+        "auth.welcome": "🔐 欢迎",
+        "auth.loginTab": "登录",
+        "auth.registerTab": "注册",
+        "auth.username": "用户名",
+        "auth.usernameHint": "用户名（3-30 个字符）",
+        "auth.password": "密码",
+        "auth.passwordHint": "密码（至少 8 个字符）",
+        "auth.email": "电子邮箱",
+        "auth.country": "国家",
+        "auth.language": "语言",
+        "auth.loginButton": "登录",
+        "auth.registerButton": "注册",
+        "auth.loginFailed": "登录失败。",
+        "auth.registerFailed": "注册失败。",
+        "auth.sessionExpired": "登录已过期，请重新登录。",
+        "auth.userExists": "该用户名或电子邮箱已被使用。",
+        "auth.invalidLogin": "用户名或密码不正确。",
+
+        "welcome.subtitle": "YOUR SMART CAMPUS COMPANION",
+        "welcome.greeting": "你好，{name}！👋",
+        "welcome.text": "在一个地方管理你的课程、作业和日程。",
+        "welcome.start": "添加作业",
+
+        "dashboard.title": "我的仪表盘",
+        "dashboard.remaining": "未完成作业",
+        "dashboard.dueWeek": "7 天内截止",
+        "dashboard.overdue": "已逾期",
+        "dashboard.rate": "完成率",
+
+        "assign.title": "📝 作业管理",
+        "assign.name": "作业名称",
+        "assign.course": "课程名称",
+        "assign.deadline": "截止日期",
+        "assign.priority": "重要程度",
+        "assign.notes": "备注",
+        "assign.notesPlaceholder": "可选",
+        "assign.add": "+ 添加作业",
+        "assign.total": "全部",
+        "assign.completed": "已完成",
+        "assign.remaining": "未完成",
+        "assign.search": "🔎 按作业或课程名称搜索...",
+        "assign.empty": "还没有作业。",
+        "assign.noMatch": "没有符合条件的作业。",
+        "assign.done": "完成",
+        "assign.undo": "撤销",
+        "assign.edit": "编辑",
+        "assign.delete": "删除",
+        "assign.confirmDelete": "要删除这项作业吗？",
+        "assign.fillAll": "请填写所有必填项。",
+        "assign.loadFailed": "无法加载作业。请确认后端正在运行。",
+        "assign.saveFailed": "无法保存作业。",
+        "assign.deleteFailed": "无法删除作业。",
+
+        "filter.allStatus": "全部作业",
+        "filter.incomplete": "未完成",
+        "filter.completed": "已完成",
+        "filter.allCourses": "全部课程",
+        "filter.allPriorities": "全部重要程度",
+        "sort.deadline": "排序：截止日期",
+        "sort.priority": "排序：重要程度",
+        "sort.newest": "排序：最新",
+
+        "due.overdue": "已逾期 {n} 天",
+        "due.today": "今天截止",
+        "due.left": "还剩 {n} 天",
+        "due.done": "已完成",
+
+        "priority.high": "高",
+        "priority.medium": "中",
+        "priority.low": "低",
+
+        "edit.title": "编辑作业",
+        "edit.save": "保存",
+        "edit.cancel": "取消",
+
+        "courses.title": "📚 课程管理",
+        "courses.description": "添加作业时会自动创建课程。你可以在这里修改名称和颜色。",
+        "courses.name": "课程名称",
+        "courses.color": "颜色",
+        "courses.add": "+ 添加课程",
+        "courses.empty": "还没有课程。",
+        "courses.count": "已完成 {done}/{total}",
+        "courses.rename": "重命名",
+        "courses.delete": "删除",
+        "courses.renamePrompt": "请输入新的课程名称。",
+        "courses.confirmDelete": "要删除这门课程吗？",
+        "courses.hasAssignments": "有作业的课程不能删除。",
+        "courses.exists": "已存在同名课程。",
+        "courses.saveFailed": "无法保存课程。",
+
+        "calendar.title": "📅 日历",
+        "calendar.prev": "上个月",
+        "calendar.next": "下个月",
+        "calendar.today": "今天",
+        "calendar.selected": "{date} 截止的作业",
+        "calendar.noItems": "这一天没有截止的作业。",
+        "calendar.more": "还有 {n} 项",
+
+        "stats.title": "📊 统计",
+        "stats.total": "全部作业",
+        "stats.completed": "已完成",
+        "stats.overdue": "已逾期",
+        "stats.rate": "完成率",
+        "stats.weekly": "每周完成的作业",
+        "stats.weeklyHint": "最近 8 周",
+        "stats.upcoming": "未来 7 天截止",
+        "stats.byCourse": "各课程进度",
+        "stats.byPriority": "按重要程度",
+        "stats.noData": "暂无数据。",
+        "stats.loadFailed": "无法加载统计数据。",
+        "stats.weekOf": "{date} 那一周",
+        "stats.items": "{n} 项",
+        "stats.showTable": "以表格查看",
+        "stats.hideTable": "以图表查看",
+        "stats.colPeriod": "期间",
+        "stats.colCount": "数量",
+
+        "assistant.title": "🤖 AI Campus Assistant",
+        "assistant.description": "根据你未完成的作业，建议你先从哪一项开始。",
+        "assistant.greeting": "你好！👋 我会查看你未完成的作业，告诉你应该先做哪一项。",
+        "assistant.example": "例如：\"这周我应该先做什么？\"",
+        "assistant.placeholder": "请输入你的问题...",
+        "assistant.send": "发送",
+        "assistant.thinking": "思考中…",
+        "assistant.offline": "无法连接服务器，以下为简要概况。未完成作业：{n} 项。",
+        "assistant.offlineNearest": "最近的截止：{title}（{date}）",
+        "source.gemini": "AI · Gemini",
+        "source.claude": "AI · Claude",
+        "source.rules": "规则建议",
+        "source.local": "离线回答",
+
+        "footer.text": "AI Campus Assistant · 软件设计项目 2026",
+        "common.error": "出现错误。"
+    },
+
+    // ---------------- Русский ----------------
+    ru: {
+        "nav.home": "Главная",
+        "nav.assignments": "Задания",
+        "nav.courses": "Предметы",
+        "nav.calendar": "Календарь",
+        "nav.stats": "Статистика",
+        "nav.assistant": "AI-помощник",
+        "header.language": "Язык",
+        "header.logout": "Выйти",
+
+        "auth.welcome": "🔐 Добро пожаловать",
+        "auth.loginTab": "Вход",
+        "auth.registerTab": "Регистрация",
+        "auth.username": "Имя пользователя",
+        "auth.usernameHint": "Имя пользователя (3–30 символов)",
+        "auth.password": "Пароль",
+        "auth.passwordHint": "Пароль (не менее 8 символов)",
+        "auth.email": "Эл. почта",
+        "auth.country": "Страна",
+        "auth.language": "Язык",
+        "auth.loginButton": "Войти",
+        "auth.registerButton": "Зарегистрироваться",
+        "auth.loginFailed": "Не удалось войти.",
+        "auth.registerFailed": "Не удалось зарегистрироваться.",
+        "auth.sessionExpired": "Сеанс истёк. Войдите снова.",
+        "auth.userExists": "Такое имя пользователя или адрес почты уже заняты.",
+        "auth.invalidLogin": "Неверное имя пользователя или пароль.",
+
+        "welcome.subtitle": "YOUR SMART CAMPUS COMPANION",
+        "welcome.greeting": "Здравствуйте, {name}! 👋",
+        "welcome.text": "Управляйте предметами, заданиями и сроками в одном месте.",
+        "welcome.start": "Добавить задание",
+
+        "dashboard.title": "Моя панель",
+        "dashboard.remaining": "Осталось заданий",
+        "dashboard.dueWeek": "Срок в течение 7 дней",
+        "dashboard.overdue": "Просрочено",
+        "dashboard.rate": "Выполнено",
+
+        "assign.title": "📝 Управление заданиями",
+        "assign.name": "Название задания",
+        "assign.course": "Предмет",
+        "assign.deadline": "Срок сдачи",
+        "assign.priority": "Важность",
+        "assign.notes": "Заметки",
+        "assign.notesPlaceholder": "Необязательно",
+        "assign.add": "+ Добавить задание",
+        "assign.total": "Всего",
+        "assign.completed": "Выполнено",
+        "assign.remaining": "Осталось",
+        "assign.search": "🔎 Поиск по заданию или предмету...",
+        "assign.empty": "Заданий пока нет.",
+        "assign.noMatch": "Подходящих заданий не найдено.",
+        "assign.done": "Готово",
+        "assign.undo": "Вернуть",
+        "assign.edit": "Изменить",
+        "assign.delete": "Удалить",
+        "assign.confirmDelete": "Удалить это задание?",
+        "assign.fillAll": "Заполните все обязательные поля.",
+        "assign.loadFailed": "Не удалось загрузить задания. Проверьте, что бэкенд запущен.",
+        "assign.saveFailed": "Не удалось сохранить задание.",
+        "assign.deleteFailed": "Не удалось удалить задание.",
+
+        "filter.allStatus": "Все задания",
+        "filter.incomplete": "Невыполненные",
+        "filter.completed": "Выполненные",
+        "filter.allCourses": "Все предметы",
+        "filter.allPriorities": "Любая важность",
+        "sort.deadline": "Сортировка: по сроку",
+        "sort.priority": "Сортировка: по важности",
+        "sort.newest": "Сортировка: сначала новые",
+
+        "due.overdue": "просрочено на {n} дн.",
+        "due.today": "Срок сегодня",
+        "due.left": "осталось {n} дн.",
+        "due.done": "Выполнено",
+
+        "priority.high": "Высокая",
+        "priority.medium": "Средняя",
+        "priority.low": "Низкая",
+
+        "edit.title": "Изменить задание",
+        "edit.save": "Сохранить",
+        "edit.cancel": "Отмена",
+
+        "courses.title": "📚 Предметы",
+        "courses.description": "Предмет создаётся автоматически при добавлении задания. Здесь можно изменить название и цвет.",
+        "courses.name": "Название предмета",
+        "courses.color": "Цвет",
+        "courses.add": "+ Добавить предмет",
+        "courses.empty": "Предметов пока нет.",
+        "courses.count": "выполнено {done}/{total}",
+        "courses.rename": "Переименовать",
+        "courses.delete": "Удалить",
+        "courses.renamePrompt": "Введите новое название предмета.",
+        "courses.confirmDelete": "Удалить этот предмет?",
+        "courses.hasAssignments": "Нельзя удалить предмет, у которого есть задания.",
+        "courses.exists": "Предмет с таким названием уже существует.",
+        "courses.saveFailed": "Не удалось сохранить предмет.",
+
+        "calendar.title": "📅 Календарь",
+        "calendar.prev": "Предыдущий месяц",
+        "calendar.next": "Следующий месяц",
+        "calendar.today": "Сегодня",
+        "calendar.selected": "Срок сдачи {date}",
+        "calendar.noItems": "В этот день сроков нет.",
+        "calendar.more": "ещё {n}",
+
+        "stats.title": "📊 Статистика",
+        "stats.total": "Всего заданий",
+        "stats.completed": "Выполнено",
+        "stats.overdue": "Просрочено",
+        "stats.rate": "Процент выполнения",
+        "stats.weekly": "Выполнено за неделю",
+        "stats.weeklyHint": "Последние 8 недель",
+        "stats.upcoming": "Сроки в ближайшие 7 дней",
+        "stats.byCourse": "Прогресс по предметам",
+        "stats.byPriority": "По важности",
+        "stats.noData": "Данных пока нет.",
+        "stats.loadFailed": "Не удалось загрузить статистику.",
+        "stats.weekOf": "неделя с {date}",
+        "stats.items": "{n} шт.",
+        "stats.showTable": "Показать таблицей",
+        "stats.hideTable": "Показать графиком",
+        "stats.colPeriod": "Период",
+        "stats.colCount": "Количество",
+
+        "assistant.title": "🤖 AI Campus Assistant",
+        "assistant.description": "Подскажет, с какого из невыполненных заданий начать.",
+        "assistant.greeting": "Здравствуйте! 👋 Я посмотрю ваши невыполненные задания и подскажу, с чего начать.",
+        "assistant.example": "Например: \"С чего начать на этой неделе?\"",
+        "assistant.placeholder": "Введите вопрос...",
+        "assistant.send": "Отправить",
+        "assistant.thinking": "Думаю…",
+        "assistant.offline": "Не удалось связаться с сервером, показываю краткую сводку. Осталось заданий: {n}.",
+        "assistant.offlineNearest": "Ближайший срок: {title} ({date})",
+        "source.gemini": "AI · Gemini",
+        "source.claude": "AI · Claude",
+        "source.rules": "Совет по правилам",
+        "source.local": "Офлайн-ответ",
+
+        "footer.text": "AI Campus Assistant · Проект по проектированию ПО 2026",
+        "common.error": "Произошла ошибка."
+    },
+
+    // ---------------- Tiếng Việt ----------------
+    vi: {
+        "nav.home": "Trang chủ",
+        "nav.assignments": "Bài tập",
+        "nav.courses": "Môn học",
+        "nav.calendar": "Lịch",
+        "nav.stats": "Thống kê",
+        "nav.assistant": "Trợ lý AI",
+        "header.language": "Ngôn ngữ",
+        "header.logout": "Đăng xuất",
+
+        "auth.welcome": "🔐 Chào mừng",
+        "auth.loginTab": "Đăng nhập",
+        "auth.registerTab": "Đăng ký",
+        "auth.username": "Tên người dùng",
+        "auth.usernameHint": "Tên người dùng (3–30 ký tự)",
+        "auth.password": "Mật khẩu",
+        "auth.passwordHint": "Mật khẩu (ít nhất 8 ký tự)",
+        "auth.email": "Email",
+        "auth.country": "Quốc gia",
+        "auth.language": "Ngôn ngữ",
+        "auth.loginButton": "Đăng nhập",
+        "auth.registerButton": "Đăng ký",
+        "auth.loginFailed": "Đăng nhập không thành công.",
+        "auth.registerFailed": "Đăng ký không thành công.",
+        "auth.sessionExpired": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+        "auth.userExists": "Tên người dùng hoặc email đã được sử dụng.",
+        "auth.invalidLogin": "Tên người dùng hoặc mật khẩu không đúng.",
+
+        "welcome.subtitle": "YOUR SMART CAMPUS COMPANION",
+        "welcome.greeting": "Xin chào, {name}! 👋",
+        "welcome.text": "Quản lý môn học, bài tập và lịch trình ở cùng một nơi.",
+        "welcome.start": "Thêm bài tập",
+
+        "dashboard.title": "Bảng điều khiển của tôi",
+        "dashboard.remaining": "Bài tập còn lại",
+        "dashboard.dueWeek": "Đến hạn trong 7 ngày",
+        "dashboard.overdue": "Quá hạn",
+        "dashboard.rate": "Tỷ lệ hoàn thành",
+
+        "assign.title": "📝 Quản lý bài tập",
+        "assign.name": "Tên bài tập",
+        "assign.course": "Tên môn học",
+        "assign.deadline": "Hạn nộp",
+        "assign.priority": "Mức độ quan trọng",
+        "assign.notes": "Ghi chú",
+        "assign.notesPlaceholder": "Không bắt buộc",
+        "assign.add": "+ Thêm bài tập",
+        "assign.total": "Tổng",
+        "assign.completed": "Đã xong",
+        "assign.remaining": "Còn lại",
+        "assign.search": "🔎 Tìm theo tên bài tập hoặc môn học...",
+        "assign.empty": "Chưa có bài tập nào.",
+        "assign.noMatch": "Không tìm thấy bài tập phù hợp.",
+        "assign.done": "Hoàn thành",
+        "assign.undo": "Hoàn tác",
+        "assign.edit": "Sửa",
+        "assign.delete": "Xóa",
+        "assign.confirmDelete": "Xóa bài tập này?",
+        "assign.fillAll": "Vui lòng điền đầy đủ các mục bắt buộc.",
+        "assign.loadFailed": "Không tải được bài tập. Hãy kiểm tra backend có đang chạy không.",
+        "assign.saveFailed": "Không lưu được bài tập.",
+        "assign.deleteFailed": "Không xóa được bài tập.",
+
+        "filter.allStatus": "Tất cả bài tập",
+        "filter.incomplete": "Chưa xong",
+        "filter.completed": "Đã xong",
+        "filter.allCourses": "Tất cả môn học",
+        "filter.allPriorities": "Mọi mức độ",
+        "sort.deadline": "Sắp xếp: hạn nộp",
+        "sort.priority": "Sắp xếp: mức độ quan trọng",
+        "sort.newest": "Sắp xếp: mới nhất",
+
+        "due.overdue": "quá hạn {n} ngày",
+        "due.today": "Hạn hôm nay",
+        "due.left": "còn {n} ngày",
+        "due.done": "Đã hoàn thành",
+
+        "priority.high": "Cao",
+        "priority.medium": "Trung bình",
+        "priority.low": "Thấp",
+
+        "edit.title": "Sửa bài tập",
+        "edit.save": "Lưu",
+        "edit.cancel": "Hủy",
+
+        "courses.title": "📚 Môn học",
+        "courses.description": "Môn học được tạo tự động khi bạn thêm bài tập. Bạn có thể đổi tên và màu ở đây.",
+        "courses.name": "Tên môn học",
+        "courses.color": "Màu",
+        "courses.add": "+ Thêm môn học",
+        "courses.empty": "Chưa có môn học nào.",
+        "courses.count": "Đã xong {done}/{total}",
+        "courses.rename": "Đổi tên",
+        "courses.delete": "Xóa",
+        "courses.renamePrompt": "Nhập tên môn học mới.",
+        "courses.confirmDelete": "Xóa môn học này?",
+        "courses.hasAssignments": "Không thể xóa môn học còn bài tập.",
+        "courses.exists": "Đã có môn học cùng tên.",
+        "courses.saveFailed": "Không lưu được môn học.",
+
+        "calendar.title": "📅 Lịch",
+        "calendar.prev": "Tháng trước",
+        "calendar.next": "Tháng sau",
+        "calendar.today": "Hôm nay",
+        "calendar.selected": "Bài tập đến hạn ngày {date}",
+        "calendar.noItems": "Không có bài tập đến hạn vào ngày này.",
+        "calendar.more": "+{n} bài khác",
+
+        "stats.title": "📊 Thống kê",
+        "stats.total": "Tổng số bài tập",
+        "stats.completed": "Đã xong",
+        "stats.overdue": "Quá hạn",
+        "stats.rate": "Tỷ lệ hoàn thành",
+        "stats.weekly": "Bài tập hoàn thành mỗi tuần",
+        "stats.weeklyHint": "8 tuần gần nhất",
+        "stats.upcoming": "Đến hạn trong 7 ngày tới",
+        "stats.byCourse": "Tiến độ theo môn học",
+        "stats.byPriority": "Theo mức độ quan trọng",
+        "stats.noData": "Chưa có dữ liệu.",
+        "stats.loadFailed": "Không tải được thống kê.",
+        "stats.weekOf": "Tuần từ {date}",
+        "stats.items": "{n} bài",
+        "stats.showTable": "Xem dạng bảng",
+        "stats.hideTable": "Xem dạng biểu đồ",
+        "stats.colPeriod": "Thời gian",
+        "stats.colCount": "Số lượng",
+
+        "assistant.title": "🤖 AI Campus Assistant",
+        "assistant.description": "Gợi ý nên bắt đầu từ bài tập nào trong số bài chưa xong.",
+        "assistant.greeting": "Xin chào! 👋 Tôi sẽ xem các bài tập chưa xong và gợi ý bạn nên bắt đầu từ đâu.",
+        "assistant.example": "Ví dụ: \"Tuần này tôi nên bắt đầu từ bài nào?\"",
+        "assistant.placeholder": "Nhập câu hỏi của bạn...",
+        "assistant.send": "Gửi",
+        "assistant.thinking": "Đang suy nghĩ…",
+        "assistant.offline": "Không kết nối được máy chủ, đây là tóm tắt ngắn. Bài tập còn lại: {n}.",
+        "assistant.offlineNearest": "Hạn gần nhất: {title} ({date})",
+        "source.gemini": "AI · Gemini",
+        "source.claude": "AI · Claude",
+        "source.rules": "Gợi ý theo quy tắc",
+        "source.local": "Trả lời ngoại tuyến",
+
+        "footer.text": "AI Campus Assistant · Dự án Thiết kế Phần mềm 2026",
+        "common.error": "Đã xảy ra lỗi."
+    },
+
+    // ---------------- English ----------------
+    en: {
+        "nav.home": "Home",
+        "nav.assignments": "Assignments",
+        "nav.courses": "Courses",
+        "nav.calendar": "Calendar",
+        "nav.stats": "Statistics",
+        "nav.assistant": "AI assistant",
+        "header.language": "Language",
+        "header.logout": "Log out",
+
+        "auth.welcome": "🔐 Welcome",
+        "auth.loginTab": "Log in",
+        "auth.registerTab": "Sign up",
+        "auth.username": "Username",
+        "auth.usernameHint": "Username (3–30 characters)",
+        "auth.password": "Password",
+        "auth.passwordHint": "Password (at least 8 characters)",
+        "auth.email": "Email",
+        "auth.country": "Country",
+        "auth.language": "Language",
+        "auth.loginButton": "Log in",
+        "auth.registerButton": "Sign up",
+        "auth.loginFailed": "Could not log in.",
+        "auth.registerFailed": "Could not sign up.",
+        "auth.sessionExpired": "Your session has expired. Please log in again.",
+        "auth.userExists": "That username or email is already in use.",
+        "auth.invalidLogin": "Incorrect username or password.",
+
+        "welcome.subtitle": "YOUR SMART CAMPUS COMPANION",
+        "welcome.greeting": "Hello, {name}! 👋",
+        "welcome.text": "Manage your courses, assignments and schedule in one place.",
+        "welcome.start": "Add an assignment",
+
+        "dashboard.title": "My dashboard",
+        "dashboard.remaining": "Remaining",
+        "dashboard.dueWeek": "Due in 7 days",
+        "dashboard.overdue": "Overdue",
+        "dashboard.rate": "Completion rate",
+
+        "assign.title": "📝 Assignments",
+        "assign.name": "Assignment title",
+        "assign.course": "Course",
+        "assign.deadline": "Deadline",
+        "assign.priority": "Priority",
+        "assign.notes": "Notes",
+        "assign.notesPlaceholder": "Optional",
+        "assign.add": "+ Add assignment",
+        "assign.total": "Total",
+        "assign.completed": "Completed",
+        "assign.remaining": "Remaining",
+        "assign.search": "🔎 Search by assignment or course...",
+        "assign.empty": "No assignments yet.",
+        "assign.noMatch": "No matching assignments.",
+        "assign.done": "Done",
+        "assign.undo": "Undo",
+        "assign.edit": "Edit",
+        "assign.delete": "Delete",
+        "assign.confirmDelete": "Delete this assignment?",
+        "assign.fillAll": "Please fill in all required fields.",
+        "assign.loadFailed": "Could not load assignments. Check that the backend is running.",
+        "assign.saveFailed": "Could not save the assignment.",
+        "assign.deleteFailed": "Could not delete the assignment.",
+
+        "filter.allStatus": "All assignments",
+        "filter.incomplete": "Incomplete",
+        "filter.completed": "Completed",
+        "filter.allCourses": "All courses",
+        "filter.allPriorities": "All priorities",
+        "sort.deadline": "Sort: deadline",
+        "sort.priority": "Sort: priority",
+        "sort.newest": "Sort: newest",
+
+        "due.overdue": "{n} day(s) overdue",
+        "due.today": "Due today",
+        "due.left": "{n} day(s) left",
+        "due.done": "Completed",
+
+        "priority.high": "High",
+        "priority.medium": "Medium",
+        "priority.low": "Low",
+
+        "edit.title": "Edit assignment",
+        "edit.save": "Save",
+        "edit.cancel": "Cancel",
+
+        "courses.title": "📚 Courses",
+        "courses.description": "Courses are created automatically when you add an assignment. You can rename them and change their colour here.",
+        "courses.name": "Course name",
+        "courses.color": "Colour",
+        "courses.add": "+ Add course",
+        "courses.empty": "No courses yet.",
+        "courses.count": "{done}/{total} completed",
+        "courses.rename": "Rename",
+        "courses.delete": "Delete",
+        "courses.renamePrompt": "Enter the new course name.",
+        "courses.confirmDelete": "Delete this course?",
+        "courses.hasAssignments": "A course that still has assignments cannot be deleted.",
+        "courses.exists": "A course with this name already exists.",
+        "courses.saveFailed": "Could not save the course.",
+
+        "calendar.title": "📅 Calendar",
+        "calendar.prev": "Previous month",
+        "calendar.next": "Next month",
+        "calendar.today": "Today",
+        "calendar.selected": "Due on {date}",
+        "calendar.noItems": "Nothing is due on this day.",
+        "calendar.more": "+{n} more",
+
+        "stats.title": "📊 Statistics",
+        "stats.total": "Total assignments",
+        "stats.completed": "Completed",
+        "stats.overdue": "Overdue",
+        "stats.rate": "Completion rate",
+        "stats.weekly": "Assignments completed per week",
+        "stats.weeklyHint": "Last 8 weeks",
+        "stats.upcoming": "Due in the next 7 days",
+        "stats.byCourse": "Progress by course",
+        "stats.byPriority": "By priority",
+        "stats.noData": "No data yet.",
+        "stats.loadFailed": "Could not load statistics.",
+        "stats.weekOf": "Week of {date}",
+        "stats.items": "{n} item(s)",
+        "stats.showTable": "Show as table",
+        "stats.hideTable": "Show as chart",
+        "stats.colPeriod": "Period",
+        "stats.colCount": "Count",
+
+        "assistant.title": "🤖 AI Campus Assistant",
+        "assistant.description": "Suggests which unfinished assignment to start first.",
+        "assistant.greeting": "Hello! 👋 I look at your unfinished assignments and suggest where to start.",
+        "assistant.example": "For example: \"What should I start this week?\"",
+        "assistant.placeholder": "Type your question...",
+        "assistant.send": "Send",
+        "assistant.thinking": "Thinking…",
+        "assistant.offline": "Could not reach the server, so here is a short summary. Remaining assignments: {n}.",
+        "assistant.offlineNearest": "Nearest deadline: {title} ({date})",
+        "source.gemini": "AI · Gemini",
+        "source.claude": "AI · Claude",
+        "source.rules": "Rule-based advice",
+        "source.local": "Offline answer",
+
+        "footer.text": "AI Campus Assistant · Software Design Project 2026",
+        "common.error": "Something went wrong."
+    }
+};
+
+let currentLanguage = DEFAULT_LANGUAGE;
+
+function normalizeLanguage(code) {
+    const short = String(code || "").toLowerCase().slice(0, 2);
+    return SUPPORTED_LANGUAGES.includes(short) ? short : null;
+}
+
+// Хадгалсан хэл → browser-ийн хэл → солонгос (анхны утга)
+function detectInitialLanguage() {
+    let saved = null;
+
+    try {
+        saved = localStorage.getItem(LANGUAGE_KEY);
+    } catch (error) {
+        // localStorage ашиглах боломжгүй орчин
+    }
+
+    return (
+        normalizeLanguage(saved) ||
+        normalizeLanguage(navigator.language) ||
+        DEFAULT_LANGUAGE
+    );
+}
+
+// Орчуулга олдохгүй бол англи, тэр ч байхгүй бол түлхүүрийг өөрийг нь буцаана.
+function t(key, params = {}) {
+    const table = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
+    let text = table[key] ?? TRANSLATIONS.en[key] ?? key;
+
+    Object.entries(params).forEach(([name, value]) => {
+        text = text.split(`{${name}}`).join(String(value));
+    });
+
+    return text;
+}
+
+function getLocale() {
+    return LOCALES[currentLanguage] || LOCALES.en;
+}
+
+// Зарим browser-т монгол хэлний огнооны өгөгдөл (Intl) байхгүй тул гараар хийнэ.
+const MN_WEEKDAYS = {
+    long: ["Ням", "Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба"],
+    short: ["Ня", "Да", "Мя", "Лх", "Пү", "Ба", "Бя"]
+};
+
+function intlSupports(locale) {
+    try {
+        return Intl.DateTimeFormat.supportedLocalesOf([locale]).length > 0;
+    } catch (error) {
+        return false;
+    }
+}
+
+function formatMongolianDate(date, options) {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const weekdayStyle = options.weekday === "long" ? "long" : "short";
+    const weekday = MN_WEEKDAYS[weekdayStyle][date.getDay()];
+
+    if (options.weekday && !options.month && !options.day) {
+        return weekday;
+    }
+
+    let text;
+
+    if (options.month === "numeric" && options.day) {
+        text = `${month}/${day}`;
+    } else if (options.month && options.day) {
+        text = `${month}-р сарын ${day}`;
+    } else if (options.month) {
+        text = `${month}-р сар`;
+    } else {
+        text = String(day);
+    }
+
+    if (options.year) {
+        text = `${year} оны ${text}`;
+    }
+
+    return options.weekday ? `${text}, ${weekday}` : text;
+}
+
+// Date объектыг тухайн хэлээр бичнэ.
+function formatDateObject(date, options) {
+    if (currentLanguage === "mn" && !intlSupports(LOCALES.mn)) {
+        return formatMongolianDate(date, options);
+    }
+
+    return new Intl.DateTimeFormat(getLocale(), options).format(date);
+}
+
+// "2026-10-17" → тухайн хэлээр уншигдах огноо
+function formatDate(isoDate, options = { year: "numeric", month: "short", day: "numeric" }) {
+    const parsed = new Date(`${isoDate}T00:00:00`);
+
+    if (Number.isNaN(parsed.getTime())) {
+        return isoDate;
+    }
+
+    return formatDateObject(parsed, options);
+}
+
+function applyTranslations(root = document) {
+    root.querySelectorAll("[data-i18n]").forEach(element => {
+        element.textContent = t(element.dataset.i18n);
+    });
+
+    root.querySelectorAll("[data-i18n-placeholder]").forEach(element => {
+        element.placeholder = t(element.dataset.i18nPlaceholder);
+    });
+
+    root.querySelectorAll("[data-i18n-title]").forEach(element => {
+        const text = t(element.dataset.i18nTitle);
+        element.title = text;
+        element.setAttribute("aria-label", text);
+    });
+
+    document.documentElement.lang = currentLanguage;
+}
+
+// Хэлний сонголтын <select>-үүдийг дүүргэнэ.
+function fillLanguageSelect(select, selected = currentLanguage) {
+    select.replaceChildren();
+
+    SUPPORTED_LANGUAGES.forEach(code => {
+        const option = document.createElement("option");
+        option.value = code;
+        option.textContent = LANGUAGE_NAMES[code];
+        select.appendChild(option);
+    });
+
+    select.value = selected;
+}
+
+function setLanguage(code) {
+    const language = normalizeLanguage(code) || DEFAULT_LANGUAGE;
+    currentLanguage = language;
+
+    try {
+        localStorage.setItem(LANGUAGE_KEY, language);
+    } catch (error) {
+        // localStorage ашиглах боломжгүй орчин
+    }
+
+    applyTranslations();
+    document.dispatchEvent(new CustomEvent("languagechange", { detail: language }));
+}
+
+currentLanguage = detectInitialLanguage();

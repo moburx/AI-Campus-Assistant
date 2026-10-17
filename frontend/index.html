@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="mn">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,92 +7,32 @@
     <title>AI Campus Assistant</title>
 
     <link rel="stylesheet" href="style.css">
-
-    <style>
-        [hidden] { display: none !important; }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .auth-section {
-            max-width: 420px;
-            margin: 40px auto;
-            padding: 24px;
-            border-radius: 12px;
-            background: #ffffff;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .auth-tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        .auth-tabs button {
-            flex: 1;
-            opacity: 0.6;
-        }
-
-        .auth-tabs button.active {
-            opacity: 1;
-            font-weight: bold;
-        }
-
-        .auth-section form {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .auth-message {
-            margin-top: 12px;
-            min-height: 1.2em;
-        }
-
-        .auth-message.error { color: #c0392b; }
-        .auth-message.success { color: #1e8449; }
-
-        /* AI чатын хариу */
-        .bot-message p { margin: 0 0 6px; }
-        .bot-message p:last-of-type { margin-bottom: 0; }
-        .bot-message ul,
-        .bot-message ol { margin: 4px 0; padding-left: 20px; }
-        .bot-message li { margin-bottom: 6px; }
-        .chat-message.pending { opacity: 0.6; font-style: italic; }
-
-        .chat-source {
-            display: inline-block;
-            margin-top: 8px;
-            padding: 2px 8px;
-            border-radius: 999px;
-            font-size: 0.75rem;
-            background: #e8eaf6;
-            color: #3949ab;
-        }
-        .chat-source-rules,
-        .chat-source-local { background: #eceff1; color: #546e7a; }
-
-        .chat-form button:disabled { opacity: 0.6; cursor: wait; }
-    </style>
 </head>
 
 <body>
     <header class="header">
         <div class="logo">🎓 AI Campus</div>
 
-        <nav>
-            <a href="#dashboard">Нүүр</a>
-            <a href="#assignments">Даалгавар</a>
-            <a href="#assistant">AI туслах</a>
+        <nav id="main-nav" hidden>
+            <a href="#dashboard" data-i18n="nav.home">Home</a>
+            <a href="#assignments" data-i18n="nav.assignments">Assignments</a>
+            <a href="#courses" data-i18n="nav.courses">Courses</a>
+            <a href="#calendar" data-i18n="nav.calendar">Calendar</a>
+            <a href="#stats" data-i18n="nav.stats">Statistics</a>
+            <a href="#assistant" data-i18n="nav.assistant">AI assistant</a>
         </nav>
 
-        <div id="user-info" class="user-info" hidden>
-            <span>👤 <strong id="user-name"></strong></span>
-            <button id="logout-button" type="button">Гарах</button>
+        <div class="header-actions">
+            <label class="language-picker">
+                <span class="visually-hidden" data-i18n="header.language">Language</span>
+                🌐
+                <select id="language-select"></select>
+            </label>
+
+            <div id="user-info" class="user-info" hidden>
+                <span>👤 <strong id="user-name"></strong></span>
+                <button id="logout-button" type="button" class="secondary-button" data-i18n="header.logout">Log out</button>
+            </div>
         </div>
     </header>
 
@@ -100,196 +40,322 @@
 
         <!-- Нэвтрэх / Бүртгүүлэх -->
         <section id="auth-section" class="auth-section" hidden>
-            <h2>🔐 Тавтай морил</h2>
+            <h2 data-i18n="auth.welcome">Welcome</h2>
 
-            <div class="auth-tabs">
-                <button id="tab-login" type="button" class="active">Нэвтрэх</button>
-                <button id="tab-register" type="button">Бүртгүүлэх</button>
+            <div class="auth-tabs" role="tablist">
+                <button id="tab-login" type="button" class="active" data-i18n="auth.loginTab">Log in</button>
+                <button id="tab-register" type="button" data-i18n="auth.registerTab">Sign up</button>
             </div>
 
-            <form id="login-form">
-                <label for="login-username">Хэрэглэгчийн нэр</label>
+            <form id="login-form" class="stacked-form">
+                <label for="login-username" data-i18n="auth.username">Username</label>
                 <input id="login-username" type="text" minlength="3" maxlength="30" required autocomplete="username">
 
-                <label for="login-password">Нууц үг</label>
+                <label for="login-password" data-i18n="auth.password">Password</label>
                 <input id="login-password" type="password" minlength="8" maxlength="128" required autocomplete="current-password">
 
-                <button type="submit">Нэвтрэх</button>
+                <button type="submit" data-i18n="auth.loginButton">Log in</button>
             </form>
 
-            <form id="register-form" hidden>
-                <label for="register-username">Хэрэглэгчийн нэр (3-30 тэмдэгт)</label>
+            <form id="register-form" class="stacked-form" hidden>
+                <label for="register-username" data-i18n="auth.usernameHint">Username</label>
                 <input id="register-username" type="text" minlength="3" maxlength="30" required autocomplete="username">
 
-                <label for="register-email">Имэйл</label>
+                <label for="register-email" data-i18n="auth.email">Email</label>
                 <input id="register-email" type="email" maxlength="254" required autocomplete="email">
 
-                <label for="register-password">Нууц үг (хамгийн багадаа 8 тэмдэгт)</label>
+                <label for="register-password" data-i18n="auth.passwordHint">Password</label>
                 <input id="register-password" type="password" minlength="8" maxlength="128" required autocomplete="new-password">
 
-                <label for="register-country">Улс</label>
-                <input id="register-country" type="text" maxlength="50" placeholder="Mongolia">
+                <label for="register-country" data-i18n="auth.country">Country</label>
+                <input id="register-country" type="text" maxlength="50" placeholder="Korea">
 
-                <label for="register-language">Хэл</label>
-                <select id="register-language">
-                    <option value="mn">Монгол</option>
-                    <option value="ko">한국어</option>
-                    <option value="zh">中文</option>
-                    <option value="ru">Русский</option>
-                    <option value="vi">Tiếng Việt</option>
-                    <option value="en">English</option>
-                </select>
+                <label for="register-language" data-i18n="auth.language">Language</label>
+                <select id="register-language"></select>
 
-                <button type="submit">Бүртгүүлэх</button>
+                <button type="submit" data-i18n="auth.registerButton">Sign up</button>
             </form>
 
-            <p id="auth-message" class="auth-message"></p>
+            <p id="auth-message" class="auth-message" role="alert"></p>
         </section>
 
         <!-- Нэвтэрсний дараа харагдах хэсэг -->
         <div id="app-content" hidden>
 
             <section class="welcome">
-                <p class="subtitle">YOUR SMART CAMPUS COMPANION</p>
-
-                <h1>Сайн байна уу? 👋</h1>
-
-                <p>
-                    Хичээл, даалгавар, сургуулийн мэдээллээ
-                    нэг дороос удирдаарай.
-                </p>
-
-                <button onclick="showWelcome()">
-                    Эхлэх
-                </button>
+                <p class="subtitle" data-i18n="welcome.subtitle">YOUR SMART CAMPUS COMPANION</p>
+                <h1 id="welcome-greeting"></h1>
+                <p data-i18n="welcome.text">Manage your courses, assignments and schedule in one place.</p>
+                <a class="button-link" href="#assignments" data-i18n="welcome.start">Add an assignment</a>
             </section>
 
+            <!-- Самбар -->
             <section id="dashboard" class="dashboard">
-                <h2>Миний самбар</h2>
+                <h2 data-i18n="dashboard.title">My dashboard</h2>
 
-                <div class="cards">
-
-                    <article class="card">
-                        <div class="icon">📝</div>
-                        <h3>Даалгавар</h3>
-                        <p>Хичээлийн ажлуудаа удирдах</p>
-                        <span>Удахгүй</span>
+                <div class="stat-tiles">
+                    <article class="stat-tile">
+                        <span class="stat-label" data-i18n="dashboard.remaining">Remaining</span>
+                        <strong id="tile-remaining" class="stat-value">0</strong>
                     </article>
-
-                    <article class="card">
-                        <div class="icon">🤖</div>
-                        <h3>AI туслах</h3>
-                        <p>Даалгавраа юунаас эхлэхийг зөвлөх</p>
-                        <span>Бэлэн</span>
+                    <article class="stat-tile">
+                        <span class="stat-label" data-i18n="dashboard.dueWeek">Due in 7 days</span>
+                        <strong id="tile-due-week" class="stat-value">0</strong>
                     </article>
-
-                    <article class="card">
-                        <div class="icon">📅</div>
-                        <h3>Суралцах төлөвлөгөө</h3>
-                        <p>Өдөр тутмын ажлаа төлөвлөх</p>
-                        <span>Удахгүй</span>
+                    <article class="stat-tile tile-warning">
+                        <span class="stat-label" data-i18n="dashboard.overdue">Overdue</span>
+                        <strong id="tile-overdue" class="stat-value">0</strong>
                     </article>
-
+                    <article class="stat-tile">
+                        <span class="stat-label" data-i18n="dashboard.rate">Completion rate</span>
+                        <strong id="tile-rate" class="stat-value">0%</strong>
+                    </article>
                 </div>
             </section>
 
-            <section id="assignments" class="assignment-manager">
-                <h2>📝 Даалгаврын удирдлага</h2>
+            <!-- Даалгавар -->
+            <section id="assignments" class="panel assignment-manager">
+                <h2 data-i18n="assign.title">Assignments</h2>
 
-                <form id="assignment-form">
-                    <label for="assignment-title">Даалгаврын нэр</label>
-                    <input
-                        id="assignment-title"
-                        type="text"
-                        placeholder="Software Design Project"
-                        required
-                    >
+                <form id="assignment-form" class="assignment-form">
+                    <div class="form-field form-field-wide">
+                        <label for="assignment-title" data-i18n="assign.name">Assignment title</label>
+                        <input id="assignment-title" type="text" maxlength="200" placeholder="Software Design Project" required>
+                    </div>
 
-                    <label for="assignment-course">Хичээлийн нэр</label>
-                    <input
-                        id="assignment-course"
-                        type="text"
-                        placeholder="소프트웨어설계"
-                        required
-                    >
+                    <div class="form-field">
+                        <label for="assignment-course" data-i18n="assign.course">Course</label>
+                        <input id="assignment-course" type="text" maxlength="200" list="course-options" placeholder="소프트웨어설계" required>
+                        <datalist id="course-options"></datalist>
+                    </div>
 
-                    <label for="assignment-deadline">Дуусах хугацаа</label>
-                    <input
-                        id="assignment-deadline"
-                        type="date"
-                        required
-                    >
+                    <div class="form-field">
+                        <label for="assignment-deadline" data-i18n="assign.deadline">Deadline</label>
+                        <input id="assignment-deadline" type="date" required>
+                    </div>
 
-                    <button type="submit">+ Даалгавар нэмэх</button>
+                    <div class="form-field">
+                        <label for="assignment-priority" data-i18n="assign.priority">Priority</label>
+                        <select id="assignment-priority">
+                            <option value="high" data-i18n="priority.high">High</option>
+                            <option value="medium" data-i18n="priority.medium" selected>Medium</option>
+                            <option value="low" data-i18n="priority.low">Low</option>
+                        </select>
+                    </div>
+
+                    <div class="form-field form-field-wide">
+                        <label for="assignment-notes" data-i18n="assign.notes">Notes</label>
+                        <textarea id="assignment-notes" rows="2" maxlength="1000" data-i18n-placeholder="assign.notesPlaceholder"></textarea>
+                    </div>
+
+                    <button type="submit" class="form-field-wide" data-i18n="assign.add">+ Add assignment</button>
                 </form>
 
                 <div class="assignment-summary">
-                    <span>Нийт: <strong id="total-count">0</strong></span>
-                    <span>Дууссан: <strong id="completed-count">0</strong></span>
-                    <span>Үлдсэн: <strong id="remaining-count">0</strong></span>
+                    <span><span data-i18n="assign.total">Total</span>: <strong id="total-count">0</strong></span>
+                    <span><span data-i18n="assign.completed">Completed</span>: <strong id="completed-count">0</strong></span>
+                    <span><span data-i18n="assign.remaining">Remaining</span>: <strong id="remaining-count">0</strong></span>
                 </div>
 
-                <!-- Даалгавар хайх, шүүх -->
+                <!-- Даалгавар хайх, шүүх, эрэмбэлэх -->
                 <div class="assignment-filters">
-                    <input
-                        type="text"
-                        id="assignment-search"
-                        placeholder="🔎 Даалгавар эсвэл хичээлийн нэрээр хайх..."
-                    >
+                    <input type="text" id="assignment-search" data-i18n-placeholder="assign.search">
 
                     <select id="assignment-status">
-                        <option value="all">Бүх даалгавар</option>
-                        <option value="incomplete">Дуусаагүй</option>
-                        <option value="completed">Дууссан</option>
+                        <option value="all" data-i18n="filter.allStatus">All assignments</option>
+                        <option value="incomplete" data-i18n="filter.incomplete">Incomplete</option>
+                        <option value="completed" data-i18n="filter.completed">Completed</option>
+                    </select>
+
+                    <select id="assignment-course-filter">
+                        <option value="all" data-i18n="filter.allCourses">All courses</option>
+                    </select>
+
+                    <select id="assignment-priority-filter">
+                        <option value="all" data-i18n="filter.allPriorities">All priorities</option>
+                        <option value="high" data-i18n="priority.high">High</option>
+                        <option value="medium" data-i18n="priority.medium">Medium</option>
+                        <option value="low" data-i18n="priority.low">Low</option>
+                    </select>
+
+                    <select id="assignment-sort">
+                        <option value="deadline" data-i18n="sort.deadline">Sort: deadline</option>
+                        <option value="priority" data-i18n="sort.priority">Sort: priority</option>
+                        <option value="newest" data-i18n="sort.newest">Sort: newest</option>
                     </select>
                 </div>
 
-                <div id="assignment-list">
-                    <p>Одоогоор даалгавар алга.</p>
+                <div id="assignment-list" aria-live="polite"></div>
+            </section>
+
+            <!-- Хичээл -->
+            <section id="courses" class="panel">
+                <h2 data-i18n="courses.title">Courses</h2>
+                <p class="section-description" data-i18n="courses.description"></p>
+
+                <form id="course-form" class="inline-form">
+                    <label for="course-name" class="visually-hidden" data-i18n="courses.name">Course name</label>
+                    <input id="course-name" type="text" maxlength="200" required data-i18n-placeholder="courses.name">
+
+                    <label for="course-color" class="visually-hidden" data-i18n="courses.color">Colour</label>
+                    <input id="course-color" type="color" value="#4f46e5" data-i18n-title="courses.color">
+
+                    <button type="submit" data-i18n="courses.add">+ Add course</button>
+                </form>
+
+                <p id="course-message" class="form-message" role="alert"></p>
+                <ul id="course-list" class="course-list"></ul>
+            </section>
+
+            <!-- Календарь -->
+            <section id="calendar" class="panel">
+                <div class="calendar-header">
+                    <h2 data-i18n="calendar.title">Calendar</h2>
+
+                    <div class="calendar-controls">
+                        <button id="calendar-prev" type="button" class="icon-button" data-i18n-title="calendar.prev">‹</button>
+                        <strong id="calendar-month" class="calendar-month"></strong>
+                        <button id="calendar-next" type="button" class="icon-button" data-i18n-title="calendar.next">›</button>
+                        <button id="calendar-today" type="button" class="secondary-button" data-i18n="calendar.today">Today</button>
+                    </div>
+                </div>
+
+                <div id="calendar-weekdays" class="calendar-weekdays" aria-hidden="true"></div>
+                <div id="calendar-grid" class="calendar-grid" role="grid"></div>
+
+                <div class="calendar-detail">
+                    <h3 id="calendar-detail-title"></h3>
+                    <ul id="calendar-detail-list" class="calendar-detail-list"></ul>
                 </div>
             </section>
 
-            <section id="assistant" class="assistant">
-                <h2>🤖 AI Campus Assistant</h2>
+            <!-- Статистик -->
+            <section id="stats" class="panel">
+                <div class="panel-header">
+                    <h2 data-i18n="stats.title">Statistics</h2>
+                    <button id="stats-table-toggle" type="button" class="secondary-button" data-i18n="stats.showTable">Show as table</button>
+                </div>
 
-                <p class="assistant-description">
-                    Сургалтын даалгаврынхаа талаар асуугаарай.
-                </p>
+                <p id="stats-message" class="form-message" role="alert"></p>
 
-                <div id="chat-messages" class="chat-messages">
+                <div class="stat-tiles">
+                    <article class="stat-tile">
+                        <span class="stat-label" data-i18n="stats.total">Total</span>
+                        <strong id="stats-total" class="stat-value">0</strong>
+                    </article>
+                    <article class="stat-tile">
+                        <span class="stat-label" data-i18n="stats.completed">Completed</span>
+                        <strong id="stats-completed" class="stat-value">0</strong>
+                    </article>
+                    <article class="stat-tile tile-warning">
+                        <span class="stat-label" data-i18n="stats.overdue">Overdue</span>
+                        <strong id="stats-overdue" class="stat-value">0</strong>
+                    </article>
+                    <article class="stat-tile">
+                        <span class="stat-label" data-i18n="stats.rate">Completion rate</span>
+                        <strong id="stats-rate" class="stat-value">0%</strong>
+                    </article>
+                </div>
+
+                <div class="chart-grid">
+                    <figure class="chart-card">
+                        <figcaption>
+                            <span data-i18n="stats.weekly">Completed per week</span>
+                            <small data-i18n="stats.weeklyHint">Last 8 weeks</small>
+                        </figcaption>
+                        <div id="chart-weekly" class="bar-chart"></div>
+                        <table id="table-weekly" class="data-table" hidden></table>
+                    </figure>
+
+                    <figure class="chart-card">
+                        <figcaption>
+                            <span data-i18n="stats.upcoming">Due in the next 7 days</span>
+                        </figcaption>
+                        <div id="chart-upcoming" class="bar-chart"></div>
+                        <table id="table-upcoming" class="data-table" hidden></table>
+                    </figure>
+
+                    <figure class="chart-card">
+                        <figcaption>
+                            <span data-i18n="stats.byCourse">Progress by course</span>
+                        </figcaption>
+                        <ul id="chart-courses" class="progress-list"></ul>
+                    </figure>
+
+                    <figure class="chart-card">
+                        <figcaption>
+                            <span data-i18n="stats.byPriority">By priority</span>
+                        </figcaption>
+                        <ul id="chart-priority" class="progress-list"></ul>
+                    </figure>
+                </div>
+            </section>
+
+            <!-- AI туслах -->
+            <section id="assistant" class="panel assistant">
+                <h2 data-i18n="assistant.title">AI Campus Assistant</h2>
+
+                <p class="assistant-description" data-i18n="assistant.description"></p>
+
+                <div id="chat-messages" class="chat-messages" aria-live="polite">
                     <div class="chat-message bot-message">
-                        Сайн байна уу! 👋 Би таны дуусаагүй даалгавруудыг харж, юунаас эхлэхийг зөвлөнө.
-                        <br>
-                        Жишээ нь: "Энэ долоо хоногт юунаас эхлэх вэ?"
+                        <p data-i18n="assistant.greeting"></p>
+                        <p data-i18n="assistant.example"></p>
                     </div>
                 </div>
 
                 <form id="chat-form" class="chat-form">
-                    <input
-                        type="text"
-                        id="chat-input"
-                        placeholder="Асуултаа энд бичнэ үү..."
-                        autocomplete="off"
-                        required
-                    >
-
-                    <button type="submit">Илгээх</button>
+                    <input type="text" id="chat-input" maxlength="500" autocomplete="off" required data-i18n-placeholder="assistant.placeholder">
+                    <button type="submit" data-i18n="assistant.send">Send</button>
                 </form>
             </section>
 
         </div>
     </main>
 
+    <!-- Даалгавар засах цонх -->
+    <dialog id="edit-dialog" class="edit-dialog">
+        <form id="edit-form" class="stacked-form" method="dialog">
+            <h3 data-i18n="edit.title">Edit assignment</h3>
+
+            <label for="edit-title" data-i18n="assign.name">Assignment title</label>
+            <input id="edit-title" type="text" maxlength="200" required>
+
+            <label for="edit-course" data-i18n="assign.course">Course</label>
+            <input id="edit-course" type="text" maxlength="200" list="course-options" required>
+
+            <label for="edit-deadline" data-i18n="assign.deadline">Deadline</label>
+            <input id="edit-deadline" type="date" required>
+
+            <label for="edit-priority" data-i18n="assign.priority">Priority</label>
+            <select id="edit-priority">
+                <option value="high" data-i18n="priority.high">High</option>
+                <option value="medium" data-i18n="priority.medium">Medium</option>
+                <option value="low" data-i18n="priority.low">Low</option>
+            </select>
+
+            <label for="edit-notes" data-i18n="assign.notes">Notes</label>
+            <textarea id="edit-notes" rows="3" maxlength="1000"></textarea>
+
+            <p id="edit-message" class="form-message" role="alert"></p>
+
+            <div class="dialog-actions">
+                <button id="edit-cancel" type="button" class="secondary-button" data-i18n="edit.cancel">Cancel</button>
+                <button type="submit" data-i18n="edit.save">Save</button>
+            </div>
+        </form>
+    </dialog>
+
     <footer>
-        <p>AI Campus Assistant · Software Design Project 2026</p>
+        <p data-i18n="footer.text">AI Campus Assistant · Software Design Project 2026</p>
     </footer>
 
-    <script>
-        function showWelcome() {
-            alert("AI Campus Assistant-д тавтай морил!");
-        }
-    </script>
-
+    <!-- Дараалал чухал: i18n → app (нийтлэг) → тус бүрийн хэсэг → main (эхлүүлэх) -->
+    <script src="i18n.js"></script>
     <script src="app.js"></script>
+    <script src="courses.js"></script>
+    <script src="calendar.js"></script>
+    <script src="stats.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>
