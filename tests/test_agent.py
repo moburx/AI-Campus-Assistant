@@ -353,3 +353,28 @@ def test_describe_actions_in_each_language():
         assert len(lines) == 4
         assert "A" in lines[0] and "B" in lines[1] and "C" in lines[2]
         assert "bad date" in lines[3]
+def test_call_with_retry_retries_temporary_errors(monkeypatch):
+    monkeypatch.setattr(agent.time, "sleep", lambda seconds: None)
+    attempts = []
+
+    def flaky():
+        attempts.append(1)
+        if len(attempts) < 3:
+            raise RuntimeError("503 UNAVAILABLE")
+        return "ok"
+
+    assert agent.call_with_retry(flaky) == "ok"
+    assert len(attempts) == 3
+
+
+def test_call_with_retry_does_not_retry_other_errors(monkeypatch):
+    monkeypatch.setattr(agent.time, "sleep", lambda seconds: None)
+    attempts = []
+
+    def broken():
+        attempts.append(1)
+        raise ValueError("bad request")
+
+    with pytest.raises(ValueError):
+        agent.call_with_retry(broken)
+    assert len(attempts) == 1
