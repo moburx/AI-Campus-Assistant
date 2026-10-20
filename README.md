@@ -151,7 +151,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 
 # AI 기능 (선택 사항 — 설정하지 않으면 규칙 기반 조언으로 동작)
 GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=your_gemini_flash_model_name
+GEMINI_MODEL=gemini-3.5-flash
+GEMINI_THINKING_LEVEL=LOW
 ```
 
 - `JWT_SECRET_KEY`에는 충분히 길고 무작위인 비밀 키를 사용해야 합니다.
@@ -161,6 +162,7 @@ GEMINI_MODEL=your_gemini_flash_model_name
 ```bash
 ./.venv/bin/python -c "from dotenv import load_dotenv; import os; load_dotenv(); from google import genai; [print(m.name) for m in genai.Client(api_key=os.getenv('GEMINI_API_KEY')).models.list() if 'flash' in m.name]"
 ```
+- 모델마다 응답 속도 차이가 큽니다. 개발 중 측정 결과 `gemini-3.8-flash`는 에이전트 응답에 80~120초가 걸렸지만, `gemini-3.5-flash`는 3~5초였습니다. 느리면 `gemini-3.1-flash-lite`를 사용해 보세요.
 
 실제 비밀 키와 API 키는 공개 저장소에 업로드하지 않습니다.
 

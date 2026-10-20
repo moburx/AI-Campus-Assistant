@@ -298,7 +298,10 @@ def run_gemini_agent(message: str, executor: ToolExecutor, client=None, model: s
 
     if client is None:
         from google import genai
-        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        client = genai.Client(
+            api_key=os.getenv("GEMINI_API_KEY"),
+            http_options=types.HttpOptions(timeout=30_000),
+        )
 
     model = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     declarations = [
@@ -314,6 +317,10 @@ def run_gemini_agent(message: str, executor: ToolExecutor, client=None, model: s
         return types.GenerateContentConfig(
             system_instruction=AGENT_SYSTEM_PROMPT,
             max_output_tokens=4096,
+                        # Бодох алхмыг багасгаж хариуг хурдасгана (.env-ээр солиж болно).
+            thinking_config=types.ThinkingConfig(
+                thinking_level=os.getenv("GEMINI_THINKING_LEVEL", "LOW"),
+            ),
             tools=[types.Tool(function_declarations=declarations)],
             # Хэрэгслийг SDK өөрөө биш, бид ToolExecutor-оор ажиллуулна.
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),

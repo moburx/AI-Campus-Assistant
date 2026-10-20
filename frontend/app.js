@@ -1,11 +1,12 @@
 // ========================================
 // AI Campus Assistant - Frontend (нийтлэг хэсэг)
 // ========================================
-// Энд: API дуудлага, нэвтрэлт, даалгаврын жагсаалт, засах цонх, AI чат.
-// Хичээл → courses.js, календарь → calendar.js, статистик → stats.js,
-// эхлүүлэх → main.js
-
-const API_BASE = "http://127.0.0.1:8001/api";
+// FastAPI-аас нээвэл (8001) ижил origin тул "/api", Live Server (5500)-ээс нээвэл backend-ийн бүтэн хаяг.
+const BACKEND_ORIGIN = "http://127.0.0.1:8001";
+const SAME_ORIGIN_HOSTS = [BACKEND_ORIGIN, "http://localhost:8001"];
+const API_BASE = SAME_ORIGIN_HOSTS.includes(window.location.origin)
+    ? "/api"
+    : `${BACKEND_ORIGIN}/api`;
 const TOKEN_KEY = "campus_token";
 const USER_KEY = "campus_user";
 

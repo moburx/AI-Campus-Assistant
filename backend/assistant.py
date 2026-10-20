@@ -9,6 +9,7 @@ AI үйлчилгээ бүрийг дараах дарааллаар оролд�
 
 import json
 import os
+import time
 from datetime import date
 
 from fastapi import APIRouter, Depends
@@ -185,7 +186,10 @@ def call_gemini(user_message: str) -> str:
     from google import genai
     from google.genai import types
 
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    client = genai.Client(
+        api_key=os.getenv("GEMINI_API_KEY"),
+        http_options=types.HttpOptions(timeout=30_000),
+    )
     response = client.models.generate_content(
         model=os.getenv("GEMINI_MODEL", GEMINI_MODEL),
         contents=user_message,
@@ -298,6 +302,7 @@ def ask_assistant(
     current_user: dict = Depends(get_current_user),
 ):
     user_id = current_user["id"]
+    started = time.perf_counter()
     language = current_user["preferred_language"]
     tasks = load_unfinished_tasks(user_id)
 
@@ -307,6 +312,7 @@ def ask_assistant(
         try:
             answer = agent_call(build_agent_message(tasks, language, request.question), executor)
             if answer.strip() or executor.actions:
+                print(f"assistant: {time.perf_counter() - started:.1f}s")
                 return build_response(
                     answer.strip() or describe_actions(executor.actions, language),
                     name,
@@ -318,6 +324,7 @@ def ask_assistant(
             print(f"{name} agent error:", error)
             # Өөрчлөлт аль хэдийн хийгдсэн бол дахин оролдохгүй (давхар нэмэхгүйн тулд).
             if executor.actions:
+                print(f"assistant: {time.perf_counter() - started:.1f}s")
                 return build_response(
                     describe_actions(executor.actions, language),
                     name,
@@ -330,9 +337,11 @@ def ask_assistant(
         try:
             answer = advice_call(build_user_message(tasks, language, request.question))
             if answer.strip():
+                print(f"assistant: {time.perf_counter() - started:.1f}s")
                 return build_response(answer, name, "advice", tasks)
         except Exception as error:
             print(f"{name} error, trying next option:", error)
 
     # 3) Үнэгүй дүрмийн зөвлөмж
+    print(f"assistant: {time.perf_counter() - started:.1f}s")
     return build_response(rule_based_advice(tasks, language), "rules", "rules", tasks)

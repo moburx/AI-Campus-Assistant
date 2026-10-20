@@ -2,6 +2,9 @@ import sqlite3
 from contextlib import asynccontextmanager
 from typing import Optional
 
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -71,7 +74,7 @@ class UserUpdate(BaseModel):
 
 
 # ---------- Ерөнхий ----------
-@app.get("/")
+@app.get("/api")
 def root():
     return {
         "message": "Welcome to AI Campus Assistant API",
@@ -214,3 +217,10 @@ def update_me(
         )
 
     return get_user_by_id(current_user["id"])
+# ---------- Frontend ----------
+# API-ийн бүх замыг бүртгэсний ДАРАА холбоно. Ингэснээр /api/... хүсэлтүүд
+# эхлээд API руу очиж, бусад зам (/, /app.js, /style.css ...) frontend файл болно.
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+
+if FRONTEND_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
