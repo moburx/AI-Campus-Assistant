@@ -9,6 +9,7 @@
 """
 
 import re
+from datetime import datetime, timezone
 from html.parser import HTMLParser
 
 from backend.database import get_connection
@@ -211,10 +212,49 @@ def save_notices(connection, items: list) -> int:
     return new_count
 
 
+LAST_REFRESH_KEY = "notices_last_refreshed"
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def get_last_refreshed():
+    """Мэдэгдлийг сүүлд татсан цаг (UTC, ISO хэлбэр) эсвэл None."""
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT value FROM app_meta WHERE key = ?",
+            (LAST_REFRESH_KEY,),
+        ).fetchone()
+
+    return row["value"] if row else None
+
+
+def set_last_refreshed(moment: datetime):
+    with get_connection() as connection:
+        connection.execute(
+            """
+            INSERT INTO app_meta (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """,
+            (LAST_REFRESH_KEY, moment.isoformat(timespec="seconds")),
+        )
+
+
+def seconds_since_last_refresh(now: datetime = None):
+    last = get_last_refreshed()
+    if last is None:
+        return None
+
+    now = now or utc_now()
+    return (now - datetime.fromisoformat(last)).total_seconds()
+
+
 def refresh_notices(fetch=None) -> dict:
     """Бүх эх сурвалжийг татаж хадгална. Нэг самбар алдаа өгсөн ч бусдыг үргэлжлүүлнэ."""
     fetch = fetch or fetch_board
     result = {"fetched": 0, "new": 0, "errors": []}
+    set_last_refreshed(utc_now())
 
     for board_id in SOURCES:
         try:

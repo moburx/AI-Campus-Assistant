@@ -9,7 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 
-from backend import assignments, assistant, courses, stats
+from backend import assignments, assistant, courses, notices_api, stats
 from backend.assignments import clean_text
 from backend.auth import (
     LanguageCode,
@@ -52,6 +52,7 @@ app.include_router(assignments.router)
 app.include_router(courses.router)
 app.include_router(stats.router)
 app.include_router(assistant.router)
+app.include_router(notices_api.router)
 
 
 # ---------- Загварууд ----------

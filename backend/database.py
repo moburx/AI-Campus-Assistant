@@ -182,6 +182,16 @@ def init_database():
             "TEXT",
         )
 
+        # Аппын жижиг тохиргоо/төлөв (жишээ нь мэдэгдлийг сүүлд хэзээ татсан).
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS app_meta (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+            """
+        )
+
         # Сургуулийн самбараас татсан мэдэгдлүүд (бүх хэрэглэгчид нийтлэг).
         connection.execute(
             """
