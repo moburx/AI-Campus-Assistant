@@ -238,6 +238,7 @@ function logout() {
     assignments = [];
     resetCourses();
     resetStats();
+    resetNotices();
     renderAll();
     chatMessages.innerHTML = chatInitialHTML;
     applyTranslations(chatMessages);
@@ -269,6 +270,7 @@ async function loginUser(username, password) {
     saveSession(data.access_token, data.user);
     showApp(data.user);
     await refreshData();
+    refreshNoticesIfStale();
 }
 
 loginForm.addEventListener("submit", async event => {
@@ -348,7 +350,7 @@ async function loadAssignments() {
 // Даалгавар, хичээл, статистикийг зэрэг ачаалаад бүгдийг зурна.
 async function refreshData() {
     try {
-        await Promise.all([loadAssignments(), loadCourses(), loadStats()]);
+        await Promise.all([loadAssignments(), loadCourses(), loadStats(), loadNotices()]);
     } catch (error) {
         console.error("API алдаа:", error);
         if (getToken()) {
@@ -360,6 +362,7 @@ async function refreshData() {
 }
 
 function renderAll() {
+    renderNotices();
     renderAssignments();
     renderCourses();
     renderCalendar();

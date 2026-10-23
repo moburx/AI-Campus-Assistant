@@ -368,6 +368,76 @@ button:disabled {
     color: #b91c1c;
 }
 
+/* ---------- Сургуулийн мэдэгдэл ---------- */
+.notices-status {
+    margin: 0 0 12px;
+    color: var(--color-text-muted);
+    font-size: 13px;
+}
+
+.notice-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.notice-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.notice-item:last-child {
+    border-bottom: none;
+}
+
+.notice-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-text-muted);
+    font-size: 13px;
+}
+
+.notice-source {
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.notice-badge {
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.notice-pinned {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.notice-new {
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+}
+
+.notice-title {
+    color: var(--color-text);
+    font-weight: 600;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.notice-title:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
 /* ---------- Даалгавар ---------- */
 .assignment-form {
     display: grid;

@@ -19,6 +19,7 @@ async function init() {
         localStorage.setItem(USER_KEY, JSON.stringify(user));
         showApp(user);
         await refreshData();
+        refreshNoticesIfStale();
     } catch (error) {
         console.error(error);
         showAuth();

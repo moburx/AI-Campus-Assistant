@@ -15,6 +15,7 @@
 
         <nav id="main-nav" hidden>
             <a href="#dashboard" data-i18n="nav.home">Home</a>
+            <a href="#notices" data-i18n="nav.notices">Notices</a>
             <a href="#assignments" data-i18n="nav.assignments">Assignments</a>
             <a href="#courses" data-i18n="nav.courses">Courses</a>
             <a href="#calendar" data-i18n="nav.calendar">Calendar</a>
@@ -111,6 +112,18 @@
                         <strong id="tile-rate" class="stat-value">0%</strong>
                     </article>
                 </div>
+            </section>
+
+            <!-- Сургуулийн мэдэгдэл -->
+            <section id="notices" class="panel">
+                <div class="panel-header">
+                    <h2 data-i18n="notices.title">School notices</h2>
+                    <button id="notices-refresh" type="button" class="secondary-button" data-i18n="notices.refresh">Refresh</button>
+                </div>
+                <p class="section-description" data-i18n="notices.description"></p>
+                <p id="notices-status" class="notices-status" aria-live="polite"></p>
+                <ul id="notice-list" class="notice-list"></ul>
+                <button id="notices-more" type="button" class="secondary-button" hidden></button>
             </section>
 
             <!-- Даалгавар -->
@@ -356,6 +369,7 @@
     <script src="courses.js"></script>
     <script src="calendar.js"></script>
     <script src="stats.js"></script>
+    <script src="notices.js"></script>
     <script src="main.js"></script>
 </body>
 </html>
