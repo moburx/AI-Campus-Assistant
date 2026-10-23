@@ -1,6 +1,7 @@
 """Бүртгэл, нэвтрэлт, JWT, хэрэглэгчийн тохиргооны тест."""
 
 import jwt
+import pytest
 from datetime import datetime, timedelta, timezone
 
 from backend.auth import JWT_ALGORITHM, JWT_SECRET_KEY
@@ -214,4 +215,15 @@ def test_update_language_rejects_unknown_code(client, user_headers):
 
 def test_update_me_with_empty_body_returns_422(client, user_headers):
     response = client.patch("/api/auth/me", json={}, headers=user_headers)
+    assert response.status_code == 422
+
+@pytest.mark.parametrize(
+    "email",
+    ["aaaaa", "no-at-sign.com", "user@", "@example.com", "two words@example.com"],
+)
+def test_register_invalid_email_returns_422(client, email):
+    response = client.post(
+        "/api/auth/register",
+        json={"username": "erin", "email": email, "password": "password123"},
+    )
     assert response.status_code == 422

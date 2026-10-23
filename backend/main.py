@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from backend import assignments, assistant, courses, stats
 from backend.assignments import clean_text
@@ -57,7 +57,7 @@ app.include_router(assistant.router)
 # ---------- Загварууд ----------
 class UserCreate(BaseModel):
     username: str = Field(min_length=3, max_length=30)
-    email: str = Field(min_length=5, max_length=254)
+    email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     country: str = Field(default="Other", min_length=1, max_length=50)
     preferred_language: LanguageCode = "en"
@@ -91,7 +91,7 @@ def health_check():
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED)
 def register_user(user: UserCreate):
     username = user.username.strip()
-    email = user.email.strip().lower()
+    email = str(user.email).strip().lower()
     country = user.country.strip()
     preferred_language = user.preferred_language
 
