@@ -11,6 +11,8 @@
 import re
 from html.parser import HTMLParser
 
+from backend.database import get_connection
+
 BASE_URL = "https://www.hanbat.ac.kr"
 USER_AGENT = "AI-Campus-Assistant/1.0 (student project; notice reader)"
 REQUEST_TIMEOUT_SECONDS = 15
@@ -165,3 +167,93 @@ def fetch_board(board_id: str, page: int = 1, client=None) -> list:
 
     notices = parse_notice_list(response.text, board_id)
     return [notice for notice in notices if is_relevant(notice, source["keywords"])]
+
+
+# ---------- DB-д хадгалах ----------
+def save_notices(connection, items: list) -> int:
+    """Мэдэгдлүүдийг хадгалж, ШИНЭЭР нэмэгдсэн тоог буцаана.
+
+    Ижил (board_id, ntt_id) аль хэдийн байвал давхар хадгалахгүй,
+    харин гарчиг эсвэл бэхлэгдсэн төлөв өөрчлөгдсөн бол шинэчилнэ.
+    """
+    new_count = 0
+
+    for item in items:
+        cursor = connection.execute(
+            """
+            INSERT OR IGNORE INTO notices (
+                board_id, ntt_id, title, writer, posted_at, pinned, url
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                item["board_id"],
+                item["ntt_id"],
+                item["title"],
+                item["writer"],
+                item["posted_at"],
+                int(item["pinned"]),
+                item["url"],
+            ),
+        )
+
+        if cursor.rowcount:
+            new_count += 1
+        else:
+            connection.execute(
+                """
+                UPDATE notices SET title = ?, pinned = ?
+                WHERE board_id = ? AND ntt_id = ?
+                """,
+                (item["title"], int(item["pinned"]), item["board_id"], item["ntt_id"]),
+            )
+
+    return new_count
+
+
+def refresh_notices(fetch=None) -> dict:
+    """Бүх эх сурвалжийг татаж хадгална. Нэг самбар алдаа өгсөн ч бусдыг үргэлжлүүлнэ."""
+    fetch = fetch or fetch_board
+    result = {"fetched": 0, "new": 0, "errors": []}
+
+    for board_id in SOURCES:
+        try:
+            items = fetch(board_id)
+        except Exception as error:
+            result["errors"].append({"board_id": board_id, "error": str(error)})
+            continue
+
+        with get_connection() as connection:
+            result["new"] += save_notices(connection, items)
+        result["fetched"] += len(items)
+
+    return result
+
+
+def notice_to_dict(row) -> dict:
+    return {
+        "id": row["id"],
+        "board_id": row["board_id"],
+        "source": SOURCES.get(row["board_id"], {}).get("name", row["board_id"]),
+        "title": row["title"],
+        "writer": row["writer"],
+        "posted_at": row["posted_at"],
+        "pinned": bool(row["pinned"]),
+        "url": row["url"],
+    }
+
+
+def list_saved_notices(limit: int = 50) -> list:
+    """Хадгалсан мэдэгдлүүдийг шинэ нь эхэнд байхаар буцаана."""
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT id, board_id, title, writer, posted_at, pinned, url
+            FROM notices
+            ORDER BY posted_at DESC, id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+
+    return [notice_to_dict(row) for row in rows]

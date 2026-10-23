@@ -182,6 +182,30 @@ def init_database():
             "TEXT",
         )
 
+        # Сургуулийн самбараас татсан мэдэгдлүүд (бүх хэрэглэгчид нийтлэг).
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS notices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                board_id TEXT NOT NULL,
+                ntt_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                writer TEXT NOT NULL DEFAULT '',
+                posted_at TEXT NOT NULL,
+                pinned INTEGER NOT NULL DEFAULT 0,
+                url TEXT NOT NULL,
+                fetched_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (board_id, ntt_id)
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_notices_posted
+            ON notices(posted_at)
+            """
+        )
+
         # Хэрэглэгч олширох үед хурдан хайхад зориулсан индексүүд.
         connection.execute(
             """
