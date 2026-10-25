@@ -206,6 +206,7 @@ async function refreshNotices({ quiet = false } = {}) {
 
         await loadNotices();
         renderNotices();
+        renderHome();
 
         if (!result.refreshed && !quiet) {
             noticeStatus.textContent = t("notices.cooldown", {

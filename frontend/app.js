@@ -1,12 +1,14 @@
 // ========================================
 // AI Campus Assistant - Frontend (нийтлэг хэсэг)
 // ========================================
-// FastAPI-аас нээвэл (8001) ижил origin тул "/api", Live Server (5500)-ээс нээвэл backend-ийн бүтэн хаяг.
+// FastAPI өөрөө frontend-ийг үйлчилж байвал ижил origin тул "/api".
+// Ингэснээр утаснаас http://192.168.x.x:8001 гэж нээсэн ч ажиллана.
+// Зөвхөн Live Server (5500) эсвэл файлаар шууд нээсэн үед backend-ийн бүтэн хаягийг ашиглана.
 const BACKEND_ORIGIN = "http://127.0.0.1:8001";
-const SAME_ORIGIN_HOSTS = [BACKEND_ORIGIN, "http://localhost:8001"];
-const API_BASE = SAME_ORIGIN_HOSTS.includes(window.location.origin)
-    ? "/api"
-    : `${BACKEND_ORIGIN}/api`;
+const LIVE_SERVER_PORT = "5500";
+const SERVED_BY_BACKEND = window.location.protocol.startsWith("http")
+    && window.location.port !== LIVE_SERVER_PORT;
+const API_BASE = SERVED_BY_BACKEND ? "/api" : `${BACKEND_ORIGIN}/api`;
 const TOKEN_KEY = "campus_token";
 const USER_KEY = "campus_user";
 
@@ -202,7 +204,24 @@ function switchTab(tab) {
     authMessage.textContent = "";
 }
 
+// Утасны браузерын дээд/доод хэсгийг хуудасны өнгөтэй тааруулна.
+const themeColorMeta = document.getElementById("theme-color");
+const THEME_COLORS = { auth: "#5b3df0", light: "#f5f7fb", dark: "#141233" };
+
+function setThemeColor(mode) {
+    if (!themeColorMeta) return;
+
+    if (mode === "auth") {
+        themeColorMeta.content = THEME_COLORS.auth;
+    } else {
+        themeColorMeta.content = document.documentElement.dataset.theme === "dark"
+            ? THEME_COLORS.dark
+            : THEME_COLORS.light;
+    }
+}
+
 function showAuth() {
+    setThemeColor("auth");
     authSection.hidden = false;
     appContent.hidden = true;
     mainNav.hidden = true;
@@ -212,12 +231,13 @@ function showAuth() {
 
 function renderGreeting() {
     if (currentUser) {
-        welcomeGreeting.textContent = t("welcome.greeting", { name: currentUser.username });
+        welcomeGreeting.textContent = t(greetingKey(), { name: currentUser.username });
     }
 }
 
 function showApp(user) {
     currentUser = user;
+    setThemeColor("app");
     authSection.hidden = true;
     appContent.hidden = false;
     mainNav.hidden = false;
@@ -254,6 +274,8 @@ function logout() {
         editDialog.close();
     }
 
+    closeAssistant({ restoreFocus: false });
+    resetView();
     showAuth();
 }
 
@@ -364,6 +386,7 @@ async function refreshData() {
 }
 
 function renderAll() {
+    renderHome();
     renderNotices();
     renderAssignments();
     renderCourses();

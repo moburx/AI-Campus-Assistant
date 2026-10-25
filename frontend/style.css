@@ -24,6 +24,13 @@
     --radius-medium: 10px;
     --radius-large: 16px;
     --focus-ring: 0 0 0 3px rgba(81, 69, 229, 0.18);
+
+    /* Брэндийн градиент: нэвтрэх фон болон "Дараагийн хугацаа" картад л ашиглана. */
+    --gradient-brand: linear-gradient(135deg, #2563eb 0%, #7c3aed 52%, #db2777 100%);
+    --gradient-overdue: linear-gradient(135deg, #b91c1c 0%, #db2777 100%);
+    --color-ink: #1c1940;
+    --sidebar-width: 232px;
+    --shadow-float: 0 24px 60px rgba(28, 25, 64, 0.28);
 }
 
 * {
@@ -36,6 +43,8 @@
 
 html {
     scroll-behavior: smooth;
+    /* Утсан дээр дээш/доош татахад (overscroll) харагдах өнгө */
+    background: var(--color-background);
 }
 
 body {
@@ -60,39 +69,91 @@ body {
 }
 
 /* ---------- Header ---------- */
+/* Цэс нь хажууд (эсвэл доор) байрлах тул дээд мөр гүйлгэхэд дагахгүй. */
 .header {
-    position: sticky;
-    top: 0;
+    position: relative;
     z-index: 10;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 16px;
-    padding: 16px 8%;
-    background: var(--color-surface);
-    border-bottom: 1px solid var(--color-border);
+    padding: 14px 40px;
+    background: transparent;
 }
 
 .logo {
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     white-space: nowrap;
 }
 
-nav {
+/* ---------- Хажуугийн цэс ---------- */
+.sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 20;
     display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
+    flex-direction: column;
+    gap: 28px;
+    width: var(--sidebar-width);
+    padding: 22px 14px;
+    background: var(--color-ink);
+    color: #ffffff;
 }
 
-nav a {
+.sidebar-logo {
+    padding: 0 10px;
+}
+
+.nav-links {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.nav-links a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 12px;
+    border-radius: var(--radius-medium);
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 15px;
     text-decoration: none;
-    color: #4b5563;
-    font-size: 14px;
 }
 
-nav a:hover {
-    color: var(--color-primary);
+.nav-links a:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+}
+
+.nav-links a[aria-current="page"] {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: inset 3px 0 0 #a78bfa;
+}
+
+.nav-links a:focus-visible {
+    outline: 2px solid #c4b5fd;
+    outline-offset: 2px;
+}
+
+.nav-icon {
+    width: 22px;
+    text-align: center;
+}
+
+/* Нэвтэрсэн үед контентыг цэсний баруун талд байрлуулна. */
+body:has(#main-nav:not([hidden])) .page {
+    margin-left: var(--sidebar-width);
+    /* AI товч сүүлийн мөрийг халхлахгүй байх зай */
+    padding-bottom: 72px;
+}
+
+body:has(#main-nav:not([hidden])) .header-logo {
+    visibility: hidden;
 }
 
 .header-actions {
@@ -130,9 +191,14 @@ nav a:hover {
 
 /* ---------- Layout ---------- */
 .container {
-    width: 84%;
     max-width: 1100px;
-    margin: 40px auto;
+    margin: 16px auto 40px;
+    padding: 0 40px;
+}
+
+/* Нэг удаад нэг хэсэг харагдах тул эхний хэсгийн дээд зай хэрэггүй. */
+#app-content > .panel {
+    margin-top: 8px;
 }
 
 .panel {
@@ -249,29 +315,142 @@ button:disabled {
 }
 
 /* ---------- Нэвтрэх ---------- */
-.auth-section {
-    max-width: 420px;
-    margin: 40px auto;
-    padding: 24px;
-    border-radius: 12px;
-    background: var(--color-surface);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+/* iPhone Safari дээр татахад цагаан зай гарахгүй байлгах:
+   html-ийн өнгийг градиенттай ойролцоо болгож, "унжих" хөдөлгөөнийг хаана. */
+html:has(#auth-section:not([hidden])) {
+    /* Safari дээд, доод toolbar-ыг html-ийн НЭГ өнгөөр буддаг тул
+       фоны дээд, доод зах хоёулаа энэ өнгөтэй байна. */
+    background: #5b3df0;
+    overscroll-behavior-y: none;
 }
 
+body:has(#auth-section:not([hidden])) {
+    overscroll-behavior-y: none;
+    min-height: 100vh;
+    background:
+        /* Цэнхэр, ягаан толбо дунд хэсэгт; зах нь #5b3df0 */
+        radial-gradient(circle at 12% 30%, rgba(37, 99, 235, 0.9), transparent 48%),
+        radial-gradient(circle at 88% 70%, rgba(219, 39, 119, 0.85), transparent 48%),
+        radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1), transparent 60%),
+        #5b3df0;
+    background-attachment: fixed;
+}
+
+body:has(#auth-section:not([hidden])) .header {
+    background: transparent;
+    backdrop-filter: none;
+}
+
+body:has(#auth-section:not([hidden])) .header-logo,
+body:has(#auth-section:not([hidden])) .language-picker,
+body:has(#auth-section:not([hidden])) footer {
+    color: #ffffff;
+}
+
+body:has(#auth-section:not([hidden])) .header-logo,
+body:has(#auth-section:not([hidden])) .theme-picker {
+    visibility: hidden;
+}
+
+body:has(#auth-section:not([hidden])) .theme-picker {
+    display: none;
+}
+
+body:has(#auth-section:not([hidden])) .language-picker select {
+    border-color: rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+}
+
+body:has(#auth-section:not([hidden])) .language-picker option {
+    color: var(--color-text);
+}
+
+body:has(#auth-section:not([hidden])) footer {
+    opacity: 0.75;
+}
+
+.auth-section {
+    max-width: 400px;
+    margin: 6vh auto 0;
+    padding: 32px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: var(--shadow-float);
+}
+
+.auth-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 26px;
+}
+
+.auth-logo {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    flex: none;
+    border-radius: 16px;
+    background: var(--gradient-brand);
+    font-size: 26px;
+}
+
+.auth-name {
+    display: block;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.auth-tagline {
+    margin: 2px 0 0;
+    color: var(--color-text-muted);
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+/* Нэвтрэх / Бүртгүүлэх сонголт: нэг хайрцаг доторх хоёр хэсэг */
 .auth-tabs {
     display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
+    gap: 4px;
+    margin-bottom: 20px;
+    padding: 4px;
+    border-radius: 12px;
+    background: #f0effa;
 }
 
 .auth-tabs button {
     flex: 1;
-    opacity: 0.6;
+    margin: 0;
+    padding: 10px;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--color-text-muted);
+    font-weight: 600;
+}
+
+.auth-tabs button:hover {
+    background: rgba(255, 255, 255, 0.6);
+    color: var(--color-text);
 }
 
 .auth-tabs button.active {
-    opacity: 1;
-    font-weight: bold;
+    background: var(--color-surface);
+    color: var(--color-primary);
+    box-shadow: 0 1px 3px rgba(28, 25, 64, 0.12);
+}
+
+.auth-section .stacked-form label {
+    margin-top: 6px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.auth-section .stacked-form button[type="submit"] {
+    margin-top: 18px;
+    font-weight: 600;
 }
 
 .stacked-form {
@@ -298,33 +477,224 @@ button:disabled {
 .auth-message.success { color: #1e8449; }
 
 /* ---------- Нүүр ---------- */
-.welcome {
-    padding: 48px;
-    border-radius: 20px;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-}
-
-.subtitle {
-    color: var(--color-primary);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 2px;
-}
-
 .welcome h1 {
-    font-size: 36px;
-    margin-bottom: 12px;
+    margin: 8px 0 4px;
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
 }
 
 .welcome p {
-    line-height: 1.8;
+    margin: 0;
+    line-height: 1.6;
     color: var(--color-text-muted);
 }
 
+/* Дараагийн хугацаа: нүүрний гол элемент, "D-3" хэлбэрээр */
+.next-up {
+    margin-top: 24px;
+    padding: 26px 32px;
+    border-radius: 22px;
+    background: var(--gradient-brand);
+    color: #ffffff;
+}
+
+.next-up.overdue {
+    background: var(--gradient-overdue);
+}
+
+.next-up-label {
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0.85;
+}
+
+.next-up-body {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+}
+
+.next-up-dday {
+    font-size: clamp(48px, 7vw, 76px);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.next-up-info {
+    min-width: 0;
+}
+
+.next-up-title {
+    margin: 0 0 8px;
+    font-size: 22px;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.next-up-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.92;
+}
+
+.next-up .course-chip {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+}
+
+.next-up .course-dot {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
+
+.next-up.is-empty {
+    background: var(--color-surface);
+    border: 2px dashed #c7c3f5;
+    color: var(--color-text);
+}
+
+.next-up.is-empty .next-up-body {
+    flex-wrap: wrap;
+    gap: 8px 20px;
+}
+
+.next-up-empty {
+    margin: 0;
+    color: var(--color-text-muted);
+}
+
+.next-up.is-empty .button-link {
+    margin-top: 0;
+}
+
 .dashboard {
-    margin-top: 40px;
-    scroll-margin-top: 90px;
+    margin-top: 20px;
+}
+
+.home-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.home-card {
+    padding: 20px 24px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-large);
+    background: var(--color-surface);
+}
+
+.home-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.home-card-header h2 {
+    margin: 0;
+    font-size: 17px;
+}
+
+.home-card-header a {
+    color: var(--color-primary);
+    font-size: 14px;
+    text-decoration: none;
+}
+
+.home-card-header a:hover {
+    text-decoration: underline;
+}
+
+.home-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.home-list .empty-message {
+    padding: 12px 0;
+}
+
+.home-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.home-row:last-child {
+    border-bottom: none;
+}
+
+.home-dday {
+    min-width: 62px;
+    padding: 4px 8px;
+    border-radius: var(--radius-small);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.home-row.due-soon .home-dday {
+    background: var(--color-soon-soft);
+    color: #b45309;
+}
+
+.home-row.overdue .home-dday {
+    background: var(--color-overdue-soft);
+    color: var(--color-danger);
+}
+
+.home-row-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-width: 0;
+}
+
+.home-row-text strong {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.home-date {
+    flex: none;
+    width: 72px;
+    color: var(--color-text-muted);
+    font-size: 13px;
+}
+
+.home-notice-link {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    color: var(--color-text);
+    line-height: 1.45;
+    text-decoration: none;
+}
+
+.home-notice-link:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
 }
 
 /* ---------- Тоон хавтан ---------- */
@@ -1117,13 +1487,78 @@ button:disabled {
 }
 
 /* ---------- AI чат ---------- */
+/* ---------- AI туслах: баруун доод буланд нээгддэг цонх ---------- */
+.assistant-fab {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 14px 22px;
+    border-radius: 999px;
+    background: var(--color-ink);
+    font-weight: 600;
+    box-shadow: var(--shadow-float);
+}
+
+.assistant-fab:hover {
+    background: #2e2a63;
+}
+
+.assistant-fab[aria-expanded="true"] {
+    background: var(--color-primary);
+}
+
 .assistant {
-    line-height: 1.8;
+    position: fixed;
+    right: 24px;
+    bottom: 92px;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    width: min(420px, calc(100vw - 48px));
+    max-height: min(680px, calc(100vh - 130px));
+    padding: 20px;
+    border-radius: 22px;
+    background: var(--color-surface);
+    box-shadow: var(--shadow-float);
+    line-height: 1.7;
+}
+
+.assistant[hidden] {
+    display: none;
+}
+
+.assistant-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.assistant-header h2 {
+    margin: 0;
+    font-size: 19px;
+}
+
+.assistant-header .icon-button {
+    margin: 0;
+}
+
+.assistant .chat-messages {
+    flex: 1;
+    min-height: 160px;
+    max-height: none;
 }
 
 .assistant-description {
+    margin: 6px 0 14px;
     color: var(--color-text-muted);
-    margin-bottom: 20px;
+    font-size: 14px;
+    line-height: 1.6;
 }
 
 .chat-messages {
@@ -1241,7 +1676,7 @@ button:disabled {
 }
 
 footer {
-    margin-top: 60px;
+    margin-top: 40px;
     padding: 24px;
     text-align: center;
     color: var(--color-text-muted);
@@ -1251,14 +1686,76 @@ footer {
 /* ---------- Жижиг дэлгэц ---------- */
 @media (max-width: 900px) {
     .header {
-        flex-wrap: wrap;
-        padding: 14px 4%;
+        padding: 12px 20px;
     }
 
-    nav {
-        order: 3;
+    .container {
+        padding: 0 20px;
+    }
+
+    /* Хажуугийн цэс → доод tab bar */
+    .sidebar {
+        inset: auto 0 0 0;
         width: 100%;
-        gap: 14px;
+        padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    }
+
+    .sidebar-logo {
+        display: none;
+    }
+
+    .nav-links {
+        flex-direction: row;
+        gap: 2px;
+    }
+
+    .nav-links a {
+        flex: 1;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        padding: 6px 2px;
+        font-size: 11px;
+    }
+
+    .nav-links a span:last-child {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .nav-links a[aria-current="page"] {
+        box-shadow: inset 0 3px 0 #a78bfa;
+    }
+
+    .nav-icon {
+        font-size: 19px;
+    }
+
+    body:has(#main-nav:not([hidden])) .page {
+        margin-left: 0;
+        padding-bottom: 140px;
+    }
+
+    body:has(#main-nav:not([hidden])) .header-logo {
+        visibility: visible;
+    }
+
+    .assistant-fab {
+        bottom: 84px;
+        right: 16px;
+    }
+
+    .assistant {
+        right: 16px;
+        bottom: 150px;
+        width: calc(100vw - 32px);
+        max-height: calc(100vh - 220px);
+    }
+
+    .home-columns {
+        grid-template-columns: 1fr;
     }
 
     .stat-tiles {
@@ -1280,17 +1777,51 @@ footer {
     }
 
     .container {
-        width: auto;
-        margin: 24px 16px;
+        padding: 0 16px;
     }
 
-    .welcome,
+    .header {
+        padding: 12px 16px;
+    }
+
+    .user-info > span {
+        display: none;
+    }
+
     .panel {
         padding: 20px;
     }
 
     .welcome h1 {
-        font-size: 28px;
+        font-size: 25px;
+    }
+
+    .next-up {
+        padding: 22px;
+    }
+
+    .next-up-body {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .auth-section {
+        margin: 2vh 16px 0;
+        padding: 26px 22px;
+    }
+
+    .assistant-fab-text {
+        display: none;
+    }
+
+    /* Утсан дээр AI цонх бүтэн дэлгэц */
+    .assistant {
+        inset: 0;
+        width: auto;
+        max-height: none;
+        border-radius: 0;
+        z-index: 60;
     }
 
     .assignment-form {
@@ -1333,5 +1864,135 @@ footer {
 
     .chat-form button {
         width: 100%;
+    }
+}
+
+/* ========================================
+   Өдрийн цаг, цэгэн хээ, бараан горим (theme.js)
+   ======================================== */
+:root {
+    --tint-a: rgba(59, 130, 246, 0.12);
+    --tint-b: rgba(124, 58, 237, 0.1);
+    --dot-color: #d3d6e6;
+}
+
+:root[data-daypart="morning"] {
+    --tint-a: rgba(251, 146, 60, 0.22);
+    --tint-b: rgba(244, 114, 182, 0.16);
+}
+
+:root[data-daypart="evening"] {
+    --tint-a: rgba(249, 115, 22, 0.22);
+    --tint-b: rgba(219, 39, 119, 0.2);
+}
+
+:root[data-daypart="night"] {
+    --tint-a: rgba(79, 70, 229, 0.2);
+    --tint-b: rgba(30, 27, 75, 0.14);
+}
+
+/* Нэвтэрсэн үед: дээд хэсэгт өнгөний туяа + дэвтрийн цэгэн хээ */
+body:has(#main-nav:not([hidden])) .page {
+    background:
+        radial-gradient(ellipse 65% 420px at 25% 0, var(--tint-a), transparent 72%),
+        radial-gradient(ellipse 45% 340px at 90% 0, var(--tint-b), transparent 72%),
+        radial-gradient(var(--dot-color) 1.2px, transparent 1.2px) 0 0 / 22px 22px,
+        var(--color-background);
+}
+
+/* ---------- Бараан горим (зөвхөн нэвтэрсний дараа) ---------- */
+:root[data-theme="dark"]:has(#app-content:not([hidden])) {
+    color-scheme: dark;
+    --color-primary: #6d64f5;
+    --color-primary-dark: #5b52e8;
+    --color-primary-soft: #2c2870;
+    --color-text: #ecebfa;
+    --color-text-muted: #a5a3c9;
+    --color-border: #332f6b;
+    --color-input-border: #433e80;
+    --color-surface: #1f1c46;
+    --color-background: #141233;
+    --color-overdue-soft: #3b1a2e;
+    --color-soon-soft: #3a2a1c;
+    --color-upcoming-soft: #17301f;
+    --color-ink: #0d0b26;
+    --tint-a: rgba(124, 58, 237, 0.32);
+    --tint-b: rgba(219, 39, 119, 0.14);
+    --dot-color: rgba(255, 255, 255, 0.07);
+    --shadow-float: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] body:has(#app-content:not([hidden])) {
+    background: var(--color-background);
+}
+
+[data-theme="dark"] body:has(#app-content:not([hidden])) :is(input, select, textarea) {
+    background: #191640;
+    color: var(--color-text);
+    border-color: var(--color-input-border);
+}
+
+[data-theme="dark"] body:has(#app-content:not([hidden])) {
+    & .secondary-button { color: #c7d2fe; }
+
+    & .secondary-button:hover,
+    & .icon-button:hover,
+    & .notice-summary-button:hover { background: #332f80; }
+
+    & .panel .stat-tile,
+    & .notice-summary,
+    & .calendar-day,
+    & .chat-messages { background: #191640; }
+
+    & .tile-warning.is-active { border-color: #5b2340; }
+    & .tile-warning.is-active .stat-value { color: #f87171; }
+
+    & .notice-source { background: #2a2760; color: #c7c5ea; }
+    & .notice-pinned { background: #3a2f12; color: #fcd34d; }
+
+    & .assignment-notes { color: var(--color-text-muted); }
+    & .assignment-item.completed { background: #1a1840; border-left-color: #4b4b6b; }
+
+    & .priority-high { background: #6d64f5; color: #ffffff; }
+    & .priority-medium { background: #2c2870; color: #c7d2fe; }
+    & .priority-low { background: #2a2760; color: #c7c5ea; }
+
+    & .progress-track { background: #2a2760; }
+    & .bar-plot { border-bottom-color: #433e80; }
+
+    & .bot-message { background: #2c2870; color: var(--color-text); }
+    & .chat-action { background: #14361f; color: #86efac; }
+    & .chat-action.failed { background: #3b1a1f; color: #fca5a5; }
+    & .chat-source { background: #2c2870; color: #c7d2fe; }
+    & .chat-source-rules,
+    & .chat-source-local { background: #2a2760; color: #c7c5ea; }
+
+    & .home-card-header a,
+    & .notice-title:hover,
+    & .home-notice-link:hover { color: #a5b4fc; }
+    & .home-row.due-soon .home-dday { color: #fbbf24; }
+    & .home-row.overdue .home-dday { color: #f87171; }
+    & .next-up.is-empty { border-color: #433e80; }
+    & .edit-dialog { background: var(--color-surface); color: var(--color-text); }
+}
+
+@media (max-width: 600px) {
+    .header-actions {
+        gap: 8px;
+    }
+
+    .header-actions .language-picker > span[aria-hidden],
+    .header-actions .language-picker {
+        font-size: 0;
+    }
+
+    .header-actions .language-picker select {
+        max-width: 96px;
+        font-size: 14px;
+    }
+
+    /* Утсан дээр зай хэмнэхийн тулд логоны зөвхөн дүрс */
+    body:has(#main-nav:not([hidden])) .logo-text {
+        display: none;
     }
 }

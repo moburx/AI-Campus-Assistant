@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Утасны браузерын дээд/доод хэсгийн өнгө (нэвтрэх үед app.js солино) -->
+    <meta id="theme-color" name="theme-color" content="#f5f7fb">
 
     <title>AI Campus Assistant</title>
 
@@ -10,20 +12,35 @@
 </head>
 
 <body>
-    <header class="header">
-        <div class="logo">🎓 AI Campus</div>
+    <!-- Нэвтэрсний дараах хажуугийн цэс (утсан дээр доод tab bar болно) -->
+    <aside id="main-nav" class="sidebar" hidden>
+        <div class="logo sidebar-logo">🎓 AI Campus</div>
 
-        <nav id="main-nav" hidden>
-            <a href="#dashboard" data-i18n="nav.home">Home</a>
-            <a href="#notices" data-i18n="nav.notices">Notices</a>
-            <a href="#assignments" data-i18n="nav.assignments">Assignments</a>
-            <a href="#courses" data-i18n="nav.courses">Courses</a>
-            <a href="#calendar" data-i18n="nav.calendar">Calendar</a>
-            <a href="#stats" data-i18n="nav.stats">Statistics</a>
-            <a href="#assistant" data-i18n="nav.assistant">AI assistant</a>
+        <nav class="nav-links" data-i18n-title="nav.menu">
+            <a href="#home" data-view-link="home"><span class="nav-icon" aria-hidden="true">🏠</span><span data-i18n="nav.home">Home</span></a>
+            <a href="#assignments" data-view-link="assignments"><span class="nav-icon" aria-hidden="true">📋</span><span data-i18n="nav.assignments">Assignments</span></a>
+            <a href="#notices" data-view-link="notices"><span class="nav-icon" aria-hidden="true">📢</span><span data-i18n="nav.notices">Notices</span></a>
+            <a href="#calendar" data-view-link="calendar"><span class="nav-icon" aria-hidden="true">📅</span><span data-i18n="nav.calendar">Calendar</span></a>
+            <a href="#courses" data-view-link="courses"><span class="nav-icon" aria-hidden="true">📚</span><span data-i18n="nav.courses">Courses</span></a>
+            <a href="#stats" data-view-link="stats"><span class="nav-icon" aria-hidden="true">📊</span><span data-i18n="nav.stats">Statistics</span></a>
         </nav>
+    </aside>
+
+    <div class="page">
+    <header class="header">
+        <div class="logo header-logo">🎓 <span class="logo-text">AI Campus</span></div>
 
         <div class="header-actions">
+            <label class="language-picker theme-picker">
+                <span class="visually-hidden" data-i18n="theme.label">Theme</span>
+                <span aria-hidden="true">🌓</span>
+                <select id="theme-select">
+                    <option value="auto" data-i18n="theme.auto">Auto</option>
+                    <option value="light" data-i18n="theme.light">Light</option>
+                    <option value="dark" data-i18n="theme.dark">Dark</option>
+                </select>
+            </label>
+
             <label class="language-picker">
                 <span class="visually-hidden" data-i18n="header.language">Language</span>
                 🌐
@@ -41,7 +58,13 @@
 
         <!-- Нэвтрэх / Бүртгүүлэх -->
         <section id="auth-section" class="auth-section" hidden>
-            <h2 data-i18n="auth.welcome">Welcome</h2>
+            <div class="auth-brand">
+                <span class="auth-logo" aria-hidden="true">🎓</span>
+                <div>
+                    <strong class="auth-name">AI Campus</strong>
+                    <p class="auth-tagline" data-i18n="auth.tagline">Your AI helper for campus life</p>
+                </div>
+            </div>
 
             <div class="auth-tabs" role="tablist">
                 <button id="tab-login" type="button" class="active" data-i18n="auth.loginTab">Log in</button>
@@ -83,16 +106,22 @@
         <!-- Нэвтэрсний дараа харагдах хэсэг -->
         <div id="app-content" hidden>
 
-            <section class="welcome">
-                <p class="subtitle" data-i18n="welcome.subtitle">YOUR SMART CAMPUS COMPANION</p>
-                <h1 id="welcome-greeting"></h1>
-                <p data-i18n="welcome.text">Manage your courses, assignments and schedule in one place.</p>
-                <a class="button-link" href="#assignments" data-i18n="welcome.start">Add an assignment</a>
+            <!-- Нүүр: дараагийн хугацаа, тоонууд, ойрын даалгавар, шинэ мэдэгдэл -->
+            <section id="home" class="home-view" data-view="home">
+                <div class="welcome">
+                    <h1 id="welcome-greeting"></h1>
+                    <p data-i18n="welcome.text">Manage your courses, assignments and schedule in one place.</p>
+                </div>
+
+                <article id="next-up" class="next-up" aria-live="polite">
+                    <p class="next-up-label" data-i18n="home.nextUp">Next deadline</p>
+                    <div id="next-up-body" class="next-up-body"></div>
+                </article>
             </section>
 
             <!-- Самбар -->
-            <section id="dashboard" class="dashboard">
-                <h2 data-i18n="dashboard.title">My dashboard</h2>
+            <section id="dashboard" class="dashboard" data-view="home">
+                <h2 class="visually-hidden" data-i18n="dashboard.title">My dashboard</h2>
 
                 <div class="stat-tiles">
                     <article class="stat-tile">
@@ -112,10 +141,28 @@
                         <strong id="tile-rate" class="stat-value">0%</strong>
                     </article>
                 </div>
+
+                <div class="home-columns">
+                    <div class="home-card">
+                        <div class="home-card-header">
+                            <h2 data-i18n="home.upcoming">Coming up</h2>
+                            <a href="#assignments" data-i18n="home.seeAll">See all</a>
+                        </div>
+                        <ul id="home-upcoming" class="home-list"></ul>
+                    </div>
+
+                    <div class="home-card">
+                        <div class="home-card-header">
+                            <h2 data-i18n="home.latestNotices">Latest notices</h2>
+                            <a href="#notices" data-i18n="home.seeAll">See all</a>
+                        </div>
+                        <ul id="home-notices" class="home-list"></ul>
+                    </div>
+                </div>
             </section>
 
             <!-- Сургуулийн мэдэгдэл -->
-            <section id="notices" class="panel">
+            <section id="notices" class="panel" data-view="notices">
                 <div class="panel-header">
                     <h2 data-i18n="notices.title">School notices</h2>
                     <button id="notices-refresh" type="button" class="secondary-button" data-i18n="notices.refresh">Refresh</button>
@@ -127,7 +174,7 @@
             </section>
 
             <!-- Даалгавар -->
-            <section id="assignments" class="panel assignment-manager">
+            <section id="assignments" class="panel assignment-manager" data-view="assignments">
                 <h2 data-i18n="assign.title">Assignments</h2>
 
                 <form id="assignment-form" class="assignment-form">
@@ -202,7 +249,7 @@
             </section>
 
             <!-- Хичээл -->
-            <section id="courses" class="panel">
+            <section id="courses" class="panel" data-view="courses">
                 <h2 data-i18n="courses.title">Courses</h2>
                 <p class="section-description" data-i18n="courses.description"></p>
 
@@ -221,7 +268,7 @@
             </section>
 
             <!-- Календарь -->
-            <section id="calendar" class="panel">
+            <section id="calendar" class="panel" data-view="calendar">
                 <div class="calendar-header">
                     <h2 data-i18n="calendar.title">Calendar</h2>
 
@@ -243,7 +290,7 @@
             </section>
 
             <!-- Статистик -->
-            <section id="stats" class="panel">
+            <section id="stats" class="panel" data-view="stats">
                 <div class="panel-header">
                     <h2 data-i18n="stats.title">Statistics</h2>
                     <button id="stats-table-toggle" type="button" class="secondary-button" data-i18n="stats.showTable">Show as table</button>
@@ -305,8 +352,11 @@
             </section>
 
             <!-- AI туслах -->
-            <section id="assistant" class="panel assistant">
-                <h2 data-i18n="assistant.title">AI Campus Assistant</h2>
+            <section id="assistant" class="assistant" role="dialog" aria-modal="false" aria-labelledby="assistant-title" hidden>
+                <div class="assistant-header">
+                    <h2 id="assistant-title" data-i18n="assistant.title">AI Campus Assistant</h2>
+                    <button id="assistant-close" type="button" class="icon-button" data-i18n-title="assistant.close">✕</button>
+                </div>
 
                 <p class="assistant-description" data-i18n="assistant.description"></p>
 
@@ -323,6 +373,10 @@
                 </form>
             </section>
 
+            <button id="assistant-open" type="button" class="assistant-fab" aria-controls="assistant" aria-expanded="false">
+                <span aria-hidden="true">🤖</span>
+                <span class="assistant-fab-text" data-i18n="assistant.open">Ask AI</span>
+            </button>
         </div>
     </main>
 
@@ -362,6 +416,7 @@
     <footer>
         <p data-i18n="footer.text">AI Campus Assistant · Software Design Project 2026</p>
     </footer>
+    </div>
 
     <!-- Дараалал чухал: i18n → app (нийтлэг) → тус бүрийн хэсэг → main (эхлүүлэх) -->
     <script src="i18n.js"></script>
@@ -370,6 +425,8 @@
     <script src="calendar.js"></script>
     <script src="stats.js"></script>
     <script src="notices.js"></script>
+    <script src="views.js"></script>
+    <script src="theme.js"></script>
     <script src="main.js"></script>
 </body>
 </html>
