@@ -209,6 +209,18 @@ def init_database():
             )
             """
         )
+        # AI-аар хэрэглэгчийн хэлээр тайлбарласан мэдэгдэл (мэдэгдэл × хэл бүрт нэг).
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS notice_summaries (
+                notice_id INTEGER NOT NULL REFERENCES notices(id) ON DELETE CASCADE,
+                language TEXT NOT NULL,
+                summary TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (notice_id, language)
+            )
+            """
+        )
         connection.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_notices_posted

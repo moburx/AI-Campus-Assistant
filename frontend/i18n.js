@@ -193,6 +193,12 @@ const TRANSLATIONS = {
         "notices.openOriginal": "학교 홈페이지에서 원문 보기",
         "notices.showMore": "{n}개 더 보기",
         "notices.showLess": "접기",
+        "notices.summarize": "🌐 쉽게 설명 보기",
+        "notices.summarizing": "AI가 읽는 중…",
+        "notices.hideSummary": "설명 접기",
+        "notices.summaryLabel": "AI 설명 · 공식 안내가 아니므로 중요한 내용은 원문을 확인하세요.",
+        "notices.summaryFailed": "설명을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "notices.aiUnavailable": "지금은 AI 설명을 사용할 수 없습니다.",
         "common.error": "문제가 발생했습니다."
     },
 
@@ -359,6 +365,12 @@ const TRANSLATIONS = {
         "notices.openOriginal": "Сургуулийн сайтаас эх нийтлэлийг харах",
         "notices.showMore": "Дахиад {n}-ийг харах",
         "notices.showLess": "Хураах",
+        "notices.summarize": "🌐 Ойлгомжтой тайлбар",
+        "notices.summarizing": "AI уншиж байна…",
+        "notices.hideSummary": "Тайлбарыг хураах",
+        "notices.summaryLabel": "AI тайлбар · Албан ёсны мэдээлэл биш тул чухал зүйлийг эх нийтлэлээс шалгаарай.",
+        "notices.summaryFailed": "Тайлбар гаргаж чадсангүй. Түр хүлээгээд дахин оролдоно уу.",
+        "notices.aiUnavailable": "Одоогоор AI тайлбар ашиглах боломжгүй.",
         "common.error": "Алдаа гарлаа."
     },
 
@@ -525,6 +537,12 @@ const TRANSLATIONS = {
         "notices.openOriginal": "在学校网站查看原文",
         "notices.showMore": "再显示 {n} 条",
         "notices.showLess": "收起",
+        "notices.summarize": "🌐 查看简单说明",
+        "notices.summarizing": "AI 正在阅读…",
+        "notices.hideSummary": "收起说明",
+        "notices.summaryLabel": "AI 说明 · 非官方信息，重要内容请查看原文。",
+        "notices.summaryFailed": "无法生成说明，请稍后再试。",
+        "notices.aiUnavailable": "目前无法使用 AI 说明。",
         "common.error": "出现错误。"
     },
 
@@ -691,6 +709,12 @@ const TRANSLATIONS = {
         "notices.openOriginal": "Открыть оригинал на сайте университета",
         "notices.showMore": "Показать ещё {n}",
         "notices.showLess": "Свернуть",
+        "notices.summarize": "🌐 Простое объяснение",
+        "notices.summarizing": "AI читает…",
+        "notices.hideSummary": "Скрыть объяснение",
+        "notices.summaryLabel": "Объяснение AI · это не официальная информация, важное проверьте в оригинале.",
+        "notices.summaryFailed": "Не удалось создать объяснение. Попробуйте позже.",
+        "notices.aiUnavailable": "Объяснение AI сейчас недоступно.",
         "common.error": "Произошла ошибка."
     },
 
@@ -857,6 +881,12 @@ const TRANSLATIONS = {
         "notices.openOriginal": "Xem bài gốc trên trang web của trường",
         "notices.showMore": "Xem thêm {n}",
         "notices.showLess": "Thu gọn",
+        "notices.summarize": "🌐 Xem giải thích dễ hiểu",
+        "notices.summarizing": "AI đang đọc…",
+        "notices.hideSummary": "Ẩn giải thích",
+        "notices.summaryLabel": "Giải thích của AI · Không phải thông tin chính thức, hãy kiểm tra bài gốc với nội dung quan trọng.",
+        "notices.summaryFailed": "Không tạo được giải thích. Vui lòng thử lại sau.",
+        "notices.aiUnavailable": "Hiện không thể dùng giải thích AI.",
         "common.error": "Đã xảy ra lỗi."
     },
 
@@ -1023,6 +1053,12 @@ const TRANSLATIONS = {
         "notices.openOriginal": "Open the original post on the university website",
         "notices.showMore": "Show {n} more",
         "notices.showLess": "Show less",
+        "notices.summarize": "🌐 Explain simply",
+        "notices.summarizing": "AI is reading…",
+        "notices.hideSummary": "Hide explanation",
+        "notices.summaryLabel": "AI explanation · Not official information. Check the original post for important details.",
+        "notices.summaryFailed": "Could not create an explanation. Please try again later.",
+        "notices.aiUnavailable": "AI explanations are not available right now.",
         "common.error": "Something went wrong."
     }
 };

@@ -1,16 +1,19 @@
 """Сургуулийн мэдэгдлийн API.
 
-GET  /api/notices          хадгалсан мэдэгдлүүд (шинэ нь эхэнд)
-POST /api/notices/refresh  сургуулийн сайтаас шинээр татах
+GET  /api/notices                хадгалсан мэдэгдлүүд (шинэ нь эхэнд)
+POST /api/notices/refresh        сургуулийн сайтаас шинээр татах
+POST /api/notices/{id}/summary   мэдэгдлийг хэрэглэгчийн хэлээр AI-аар тайлбарлах
 
 Сургуулийн сайтыг ачааллахгүйн тулд шинэчлэлийг REFRESH_COOLDOWN_SECONDS
 секундэд нэг удаа л зөвшөөрнө. Хэн ч дарсан ижил хязгаар үйлчилнэ.
 """
 
-from fastapi import APIRouter, Depends, Query
+from typing import Optional
 
-from backend import notices
-from backend.auth import get_current_user
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from backend import notice_summary, notices
+from backend.auth import LanguageCode, get_current_user
 
 router = APIRouter(prefix="/api/notices", tags=["notices"])
 
@@ -45,3 +48,23 @@ def refresh(current_user: dict = Depends(get_current_user)):
         **result,
         "last_refreshed": notices.get_last_refreshed(),
     }
+
+
+@router.post("/{notice_id}/summary")
+def summarize_notice(
+    notice_id: int,
+    language: Optional[LanguageCode] = Query(default=None),
+    current_user: dict = Depends(get_current_user),
+):
+    """Хэл заагаагүй бол хэрэглэгчийн профайлын хэлийг ашиглана."""
+    language = language or current_user["preferred_language"]
+
+    try:
+        return notice_summary.get_or_create_summary(notice_id, language)
+    except notice_summary.NotFoundError:
+        raise HTTPException(status_code=404, detail="Notice not found.")
+    except notice_summary.AIUnavailableError:
+        raise HTTPException(status_code=503, detail="AI summary is not available right now.")
+    except Exception as error:
+        print("notice summary error:", error)
+        raise HTTPException(status_code=502, detail="Could not summarize this notice.")

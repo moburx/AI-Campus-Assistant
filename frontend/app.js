@@ -75,6 +75,8 @@ function clearSession() {
 // ---------- API туслах функцууд ----------
 // Backend-ийн англи алдааны мессежийг сонгосон хэл рүү хөрвүүлнэ.
 const ERROR_TRANSLATIONS = {
+    "AI summary is not available right now.": "notices.aiUnavailable",
+    "Could not summarize this notice.": "notices.summaryFailed",
     "Username or email already exists.": "auth.userExists",
     "Invalid username or password.": "auth.invalidLogin",
     "A course with this name already exists.": "courses.exists",

@@ -12,6 +12,11 @@ let schoolNotices = [];
 let noticesLastRefreshed = null;
 let showAllNotices = false;
 
+// AI тайлбар: "мэдэгдлийн id:хэл" → текст. Нээлттэй байгаа мэдэгдлүүдийн id.
+const noticeSummaries = {};
+const openSummaries = new Set();
+const loadingSummaries = new Set();
+
 const noticeList = document.getElementById("notice-list");
 const noticeStatus = document.getElementById("notices-status");
 const noticeRefreshButton = document.getElementById("notices-refresh");
@@ -27,6 +32,8 @@ function resetNotices() {
     schoolNotices = [];
     noticesLastRefreshed = null;
     showAllNotices = false;
+    openSummaries.clear();
+    Object.keys(noticeSummaries).forEach(key => delete noticeSummaries[key]);
     noticeStatus.textContent = "";
 }
 
@@ -83,8 +90,84 @@ function createNoticeItem(notice) {
     link.textContent = notice.title;
     link.title = t("notices.openOriginal");
 
-    item.append(meta, link);
+    item.append(meta, link, createSummaryArea(notice));
     return item;
+}
+
+// ---------- AI тайлбар ----------
+function summaryKey(noticeId) {
+    return `${noticeId}:${currentLanguage}`;
+}
+
+function createSummaryArea(notice) {
+    const area = document.createElement("div");
+    area.className = "notice-summary-area";
+
+    const key = summaryKey(notice.id);
+    const isOpen = openSummaries.has(notice.id);
+    const isLoading = loadingSummaries.has(key);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "notice-summary-button";
+    button.disabled = isLoading;
+    button.textContent = isLoading
+        ? t("notices.summarizing")
+        : isOpen ? t("notices.hideSummary") : t("notices.summarize");
+    button.addEventListener("click", () => toggleSummary(notice));
+    area.appendChild(button);
+
+    if (isOpen && noticeSummaries[key]) {
+        const box = document.createElement("div");
+        box.className = "notice-summary";
+
+        const label = document.createElement("p");
+        label.className = "notice-summary-label";
+        label.textContent = t("notices.summaryLabel");
+
+        const content = document.createElement("div");
+        renderMarkdown(content, noticeSummaries[key]);
+
+        box.append(label, content);
+        area.appendChild(box);
+    }
+
+    return area;
+}
+
+async function toggleSummary(notice) {
+    if (openSummaries.has(notice.id)) {
+        openSummaries.delete(notice.id);
+        renderNotices();
+        return;
+    }
+
+    openSummaries.add(notice.id);
+    const key = summaryKey(notice.id);
+
+    if (noticeSummaries[key]) {
+        renderNotices();
+        return;
+    }
+
+    loadingSummaries.add(key);
+    renderNotices();
+
+    try {
+        const data = await apiJson(
+            `/notices/${notice.id}/summary?language=${encodeURIComponent(currentLanguage)}`,
+            { method: "POST" },
+            "notices.summaryFailed"
+        );
+        noticeSummaries[key] = data.summary;
+    } catch (error) {
+        console.error("Мэдэгдлийн тайлбар:", error);
+        openSummaries.delete(notice.id);
+        alert(error.message);
+    } finally {
+        loadingSummaries.delete(key);
+        renderNotices();
+    }
 }
 
 function renderNotices() {
