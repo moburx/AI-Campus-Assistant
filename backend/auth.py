@@ -2,6 +2,7 @@
 
 import os
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Literal
 
 import jwt
@@ -12,7 +13,11 @@ from pwdlib import PasswordHash
 
 from backend.database import get_connection
 
-load_dotenv()
+# Төслийн root дахь .env-ийг бүтэн замаар нь уншина.
+# load_dotenv()-ийг замгүй дуудвал backend/ folder-оос эхэлж хайдаг тул
+# өөр .env файл олдож, GEMINI_API_KEY уншигдахгүй байх алдаа гарч байсан.
+PROJECT_ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(PROJECT_ENV_FILE)
 
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")

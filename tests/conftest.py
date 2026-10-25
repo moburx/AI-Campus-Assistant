@@ -32,6 +32,8 @@ def isolated_environment(tmp_path, monkeypatch):
     monkeypatch.setenv("CAMPUS_DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    # Жинхэнэ .env-д EMAIL_MODE=smtp байсан ч тест имэйл илгээхгүй.
+    monkeypatch.setenv("EMAIL_MODE", "console")
     yield
 
 
