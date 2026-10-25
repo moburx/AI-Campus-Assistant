@@ -21,3 +21,8 @@ def test_api_routes_still_work(client):
 def test_unknown_paths_return_404(client):
     assert client.get("/api/does-not-exist").status_code == 404
     assert client.get("/missing-page.html").status_code == 404
+
+def test_frontend_files_are_revalidated(client):
+    assert client.get("/app.js").headers["cache-control"] == "no-cache"
+    assert client.get("/").headers["cache-control"] == "no-cache"
+    assert "cache-control" not in client.get("/api/health").headers

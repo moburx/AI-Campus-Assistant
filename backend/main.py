@@ -48,6 +48,18 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 
+@app.middleware("http")
+async def no_cache_for_frontend(request, call_next):
+    """Frontend файлыг browser кэшлэх үедээ сервертэй заавал тулгадаг болгоно.
+
+    Өөрчлөгдөөгүй бол 304 (хурдан), өөрчлөгдсөн бол шинэ файлыг авна.
+    Ингэснээр хуучин app.js, i18n.js ачаалагдах асуудал гарахгүй.
+    """
+    response = await call_next(request)
+    if not request.url.path.startswith("/api"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
 app.include_router(assignments.router)
 app.include_router(courses.router)
 app.include_router(stats.router)
