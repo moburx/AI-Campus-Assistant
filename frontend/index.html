@@ -100,6 +100,22 @@
                 <button type="submit" data-i18n="auth.registerButton">Sign up</button>
             </form>
 
+            <!-- Имэйлээр ирсэн 6 оронтой код -->
+            <form id="verify-form" class="stacked-form" hidden>
+                <p id="verify-intro" class="verify-intro"></p>
+
+                <label for="verify-code" data-i18n="verify.code">Verification code</label>
+                <input id="verify-code" class="code-input" type="text" inputmode="numeric"
+                       autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" required>
+
+                <button type="submit" data-i18n="verify.submit">Verify</button>
+
+                <div class="verify-actions">
+                    <button id="verify-resend" type="button" class="secondary-button" data-i18n="verify.resend">Resend code</button>
+                    <button id="verify-back" type="button" class="link-button" data-i18n="verify.back">Back to log in</button>
+                </div>
+            </form>
+
             <p id="auth-message" class="auth-message" role="alert"></p>
         </section>
 

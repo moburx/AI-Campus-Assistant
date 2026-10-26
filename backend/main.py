@@ -9,7 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 
-from backend import assignments, assistant, courses, notices_api, stats
+from backend import assignments, assistant, courses, mailer, notices_api, stats, verification
 from backend.assignments import clean_text
 from backend.auth import (
     LanguageCode,
@@ -65,6 +65,7 @@ app.include_router(courses.router)
 app.include_router(stats.router)
 app.include_router(assistant.router)
 app.include_router(notices_api.router)
+app.include_router(verification.router)
 
 
 # ---------- Загварууд ----------
@@ -125,9 +126,10 @@ def register_user(user: UserCreate):
                     email,
                     password_hash,
                     country,
-                    preferred_language
+                    preferred_language,
+                    email_verified
                 )
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, 0)
                 """,
                 (
                     username,
@@ -146,13 +148,24 @@ def register_user(user: UserCreate):
             detail="Username or email already exists.",
         )
 
+    # Баталгаажуулах код илгээнэ. Имэйл явахгүй байсан ч бүртгэл үлдэнэ,
+    # хэрэглэгч "код дахин илгээх"-ээр дахин оролдож болно.
+    email_sent = True
+    try:
+        verification.send_code(verification.find_user(username))
+    except mailer.EmailError as error:
+        print("verification email error:", error)
+        email_sent = False
+
     return {
         "id": user_id,
         "username": username,
         "email": email,
         "country": country,
         "preferred_language": preferred_language,
-        "message": "Registration successful.",
+        "verification_required": True,
+        "email_sent": email_sent,
+        "message": "Registration successful. Check your email for the code.",
     }
 
 
@@ -164,7 +177,7 @@ def login_user(user: UserLogin):
         row = connection.execute(
             """
             SELECT id, username, email, password_hash,
-                   country, preferred_language
+                   country, preferred_language, email_verified
             FROM users
             WHERE username = ?
             """,
@@ -178,6 +191,13 @@ def login_user(user: UserLogin):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password.",
+        )
+
+    # Нууц үг зөв үед л хэлнэ (нууц үггүйгээр акаунтын төлөв илрэхгүй).
+    if not row["email_verified"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email not verified.",
         )
 
     access_token = create_access_token(row["id"])

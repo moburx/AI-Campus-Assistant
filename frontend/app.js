@@ -33,6 +33,12 @@ const registerLanguage = document.getElementById("register-language");
 const tabLogin = document.getElementById("tab-login");
 const tabRegister = document.getElementById("tab-register");
 const authMessage = document.getElementById("auth-message");
+const authTabs = document.querySelector(".auth-tabs");
+const verifyForm = document.getElementById("verify-form");
+const verifyIntro = document.getElementById("verify-intro");
+const verifyCodeInput = document.getElementById("verify-code");
+const verifyResendButton = document.getElementById("verify-resend");
+const verifyBackButton = document.getElementById("verify-back");
 
 const assignmentForm = document.getElementById("assignment-form");
 const searchInput = document.getElementById("assignment-search");
@@ -79,6 +85,11 @@ function clearSession() {
 const ERROR_TRANSLATIONS = {
     "AI summary is not available right now.": "notices.aiUnavailable",
     "Could not summarize this notice.": "notices.summaryFailed",
+    "Invalid or expired code.": "verify.invalid",
+    "Too many attempts. Request a new code.": "verify.tooMany",
+    "Please wait before requesting a new code.": "verify.wait",
+    "Could not send the email.": "verify.emailFailed",
+    "Email not verified.": "verify.needed",
     "AI daily limit reached.": "notices.aiQuota",
     "Username or email already exists.": "auth.userExists",
     "Invalid username or password.": "auth.invalidLogin",
@@ -198,6 +209,7 @@ function showAuthMessage(text, isError = true) {
 function switchTab(tab) {
     const isLogin = tab === "login";
 
+    hideVerify();
     loginForm.hidden = !isLogin;
     registerForm.hidden = isLogin;
     tabLogin.classList.toggle("active", isLogin);
@@ -284,19 +296,146 @@ tabLogin.addEventListener("click", () => switchTab("login"));
 tabRegister.addEventListener("click", () => switchTab("register"));
 logoutButton.addEventListener("click", logout);
 
-async function loginUser(username, password) {
-    const response = await publicPost("/auth/login", { username, password });
-
-    if (!response.ok) {
-        throw new Error(await readError(response, "auth.loginFailed"));
-    }
-
-    const data = await response.json();
+// Нэвтрэх болон имэйл баталгаажуулсны дараа: token хадгалаад апп-ыг нээнэ.
+async function startSession(data) {
     saveSession(data.access_token, data.user);
     showApp(data.user);
     await refreshData();
     refreshNoticesIfStale();
 }
+
+async function loginUser(username, password) {
+    const response = await publicPost("/auth/login", { username, password });
+
+    // Нууц үг зөв боловч имэйл баталгаажаагүй: код оруулах дэлгэц рүү.
+    if (response.status === 403) {
+        showVerify(username, null, 0);
+        showAuthMessage(t("verify.needed"), false);
+        return false;
+    }
+
+    if (!response.ok) {
+        throw new Error(await readError(response, "auth.loginFailed"));
+    }
+
+    await startSession(await response.json());
+    return true;
+}
+
+// ---------- Имэйл баталгаажуулалт ----------
+const RESEND_COOLDOWN_SECONDS = 60;
+let pendingVerification = null; // { username, email }
+let resendTimer = null;
+let resendSecondsLeft = 0;
+
+function renderVerifyIntro() {
+    if (!pendingVerification) return;
+    verifyIntro.textContent = pendingVerification.email
+        ? t("verify.sentTo", { email: pendingVerification.email })
+        : t("verify.sentGeneric");
+}
+
+function renderResendButton() {
+    verifyResendButton.disabled = resendSecondsLeft > 0;
+    verifyResendButton.textContent = resendSecondsLeft > 0
+        ? t("verify.resendIn", { n: resendSecondsLeft })
+        : t("verify.resend");
+}
+
+function startResendCooldown(seconds) {
+    clearInterval(resendTimer);
+    resendSecondsLeft = seconds;
+    renderResendButton();
+
+    if (seconds <= 0) return;
+
+    resendTimer = setInterval(() => {
+        resendSecondsLeft -= 1;
+        renderResendButton();
+        if (resendSecondsLeft <= 0) {
+            clearInterval(resendTimer);
+        }
+    }, 1000);
+}
+
+function showVerify(username, email, cooldown = RESEND_COOLDOWN_SECONDS) {
+    pendingVerification = { username, email };
+    loginForm.hidden = true;
+    registerForm.hidden = true;
+    authTabs.hidden = true;
+    verifyForm.hidden = false;
+    verifyForm.reset();
+    renderVerifyIntro();
+    startResendCooldown(cooldown);
+    verifyCodeInput.focus();
+}
+
+function hideVerify() {
+    pendingVerification = null;
+    clearInterval(resendTimer);
+    verifyForm.hidden = true;
+    authTabs.hidden = false;
+}
+
+verifyForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!pendingVerification) return;
+
+    try {
+        const response = await publicPost("/auth/verify", {
+            username: pendingVerification.username,
+            code: verifyCodeInput.value.trim()
+        });
+
+        if (!response.ok) {
+            throw new Error(await readError(response, "verify.invalid"));
+        }
+
+        const data = await response.json();
+        switchTab("login");
+        authMessage.textContent = "";
+        await startSession(data);
+    } catch (error) {
+        showAuthMessage(error.message);
+        verifyCodeInput.select();
+    }
+});
+
+// Зөвхөн тоо, 6 оронтой болмогц автоматаар илгээнэ.
+verifyCodeInput.addEventListener("input", () => {
+    verifyCodeInput.value = verifyCodeInput.value.replace(/\D/g, "").slice(0, 6);
+    if (verifyCodeInput.value.length === 6) {
+        verifyForm.requestSubmit();
+    }
+});
+
+verifyResendButton.addEventListener("click", async () => {
+    if (!pendingVerification) return;
+    verifyResendButton.disabled = true;
+
+    try {
+        const response = await publicPost("/auth/resend", { username: pendingVerification.username });
+
+        if (response.status === 429) {
+            const wait = Number(response.headers.get("Retry-After")) || RESEND_COOLDOWN_SECONDS;
+            startResendCooldown(wait);
+            showAuthMessage(t("verify.wait"));
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(await readError(response, "verify.emailFailed"));
+        }
+
+        startResendCooldown(RESEND_COOLDOWN_SECONDS);
+        showAuthMessage(t("verify.resent"), false);
+    } catch (error) {
+        showAuthMessage(error.message);
+        renderResendButton();
+    }
+});
+
+verifyBackButton.addEventListener("click", () => switchTab("login"));
 
 loginForm.addEventListener("submit", async event => {
     event.preventDefault();
@@ -305,9 +444,10 @@ loginForm.addEventListener("submit", async event => {
     const password = document.getElementById("login-password").value;
 
     try {
-        await loginUser(username, password);
-        loginForm.reset();
-        authMessage.textContent = "";
+        if (await loginUser(username, password)) {
+            loginForm.reset();
+            authMessage.textContent = "";
+        }
     } catch (error) {
         showAuthMessage(error.message);
     }
@@ -331,10 +471,16 @@ registerForm.addEventListener("submit", async event => {
             throw new Error(await readError(response, "auth.registerFailed"));
         }
 
-        // Бүртгүүлсний дараа автоматаар нэвтрүүлнэ
-        await loginUser(payload.username, payload.password);
+        // Имэйлээр ирсэн кодыг оруулах дэлгэц рүү шилжинэ.
+        const data = await response.json();
         registerForm.reset();
-        authMessage.textContent = "";
+        showVerify(payload.username, payload.email);
+        if (data.email_sent === false) {
+            showAuthMessage(t("verify.emailFailed"));
+            startResendCooldown(0);
+        } else {
+            authMessage.textContent = "";
+        }
     } catch (error) {
         showAuthMessage(error.message);
     }
@@ -363,6 +509,8 @@ languageSelect.addEventListener("change", async () => {
 // Хэл солигдоход JS-ээр зурсан бүх хэсгийг дахин зурна.
 document.addEventListener("languagechange", () => {
     languageSelect.value = currentLanguage;
+    renderVerifyIntro();
+    if (pendingVerification) renderResendButton();
     renderGreeting();
     renderAll();
 });

@@ -5,6 +5,7 @@ campus.db-д нөлөөлөхгүй, тестүүд бие биеэсээ хам
 """
 
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -21,7 +22,7 @@ os.environ.setdefault(
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from backend import gemini_models  # noqa: E402
+from backend import gemini_models, mailer  # noqa: E402
 from backend.main import app  # noqa: E402
 
 DEFAULT_PASSWORD = "password123"
@@ -39,6 +40,7 @@ def isolated_environment(tmp_path, monkeypatch):
     monkeypatch.delenv("GEMINI_MODELS", raising=False)
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
     gemini_models.reset_exhausted()
+    mailer.outbox.clear()
     yield
 
 
@@ -61,6 +63,22 @@ def register(client, username, language="en", password=DEFAULT_PASSWORD):
         },
     )
     assert response.status_code == 201, response.text
+    # Имэйлээр ирсэн кодоор баталгаажуулна (EMAIL_MODE=console → mailer.outbox).
+    verify_email(client, username)
+    return response.json()
+
+
+def latest_code() -> str:
+    body = mailer.outbox[-1].get_body(("plain",)).get_content()
+    return re.search(r"\b(\d{6})\b", body).group(1)
+
+
+def verify_email(client, username):
+    response = client.post(
+        "/api/auth/verify",
+        json={"username": username, "code": latest_code()},
+    )
+    assert response.status_code == 200, response.text
     return response.json()
 
 

@@ -150,6 +150,26 @@ def init_database():
             """
         )
 
+        # Имэйл баталгаажуулалт. DEFAULT 1: энэ боломжоос өмнө бүртгүүлсэн
+        # хэрэглэгчид баталгаажсан гэж тооцогдоно. Шинэ хэрэглэгчийг 0-ээр үүсгэнэ.
+        add_column_if_missing(
+            connection,
+            "users",
+            "email_verified",
+            "INTEGER NOT NULL DEFAULT 1",
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS email_verifications (
+                user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                code_hash TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                last_sent_at TEXT NOT NULL
+            )
+            """
+        )
+
         # Хуучин өгөгдөлд шинэ баганууд байхгүй бол нэмнэ.
         add_column_if_missing(
             connection,
