@@ -23,6 +23,7 @@ from backend.agent import (
 )
 from backend.auth import get_current_user
 from backend.database import get_connection
+from backend.gemini_models import QuotaExceededError, call_with_model_fallback
 
 router = APIRouter(prefix="/api/assistant", tags=["assistant"])
 
@@ -190,14 +191,14 @@ def call_gemini(user_message: str) -> str:
         api_key=os.getenv("GEMINI_API_KEY"),
         http_options=types.HttpOptions(timeout=30_000),
     )
-    response = client.models.generate_content(
-        model=os.getenv("GEMINI_MODEL", GEMINI_MODEL),
+    response = call_with_model_fallback(lambda model: client.models.generate_content(
+        model=model,
         contents=user_message,
         config=types.GenerateContentConfig(
             system_instruction=ASSISTANT_SYSTEM_PROMPT,
             max_output_tokens=MAX_OUTPUT_TOKENS,
         ),
-    )
+    ))
 
     finish_reason = response.candidates[0].finish_reason if response.candidates else None
     if finish_reason is not None and "MAX_TOKENS" in str(finish_reason):
@@ -286,13 +287,15 @@ def describe_actions(actions: list, language: str) -> str:
     return "\n".join(lines)
 
 
-def build_response(answer: str, source: str, mode: str, tasks: list, actions=None) -> dict:
+def build_response(answer: str, source: str, mode: str, tasks: list, actions=None, notice=None) -> dict:
     return {
         "answer": answer,
         "source": source,
         "mode": mode,
         "actions": actions or [],
         "assignment_count": len(tasks),
+        # "ai_quota": AI-ийн өнөөдрийн хязгаар дууссан тул дүрмийн зөвлөмж өгсөн
+        "notice": notice,
     }
 
 
@@ -305,6 +308,7 @@ def ask_assistant(
     started = time.perf_counter()
     language = current_user["preferred_language"]
     tasks = load_unfinished_tasks(user_id)
+    quota_reached = False
 
     for name, agent_call, advice_call in get_providers():
         # 1) Агент горим: хэрэгсэл ашиглаж даалгаврыг өөрчилж болно.
@@ -322,6 +326,9 @@ def ask_assistant(
                 )
         except Exception as error:
             print(f"{name} agent error:", error)
+            if isinstance(error, QuotaExceededError):
+                # Бүх model-ийн хязгаар дууссан: энгийн зөвлөмж ч мөн адил 429 авна.
+                quota_reached = True
             # Өөрчлөлт аль хэдийн хийгдсэн бол дахин оролдохгүй (давхар нэмэхгүйн тулд).
             if executor.actions:
                 print(f"assistant: {time.perf_counter() - started:.1f}s")
@@ -333,7 +340,9 @@ def ask_assistant(
                     executor.actions,
                 )
 
-        # 2) Энгийн зөвлөмж (хэрэгсэлгүй).
+        # 2) Энгийн зөвлөмж (хэрэгсэлгүй). Gemini-ийн хязгаар дууссан бол оролдох нь дэмий.
+        if name == "gemini" and quota_reached:
+            continue
         try:
             answer = advice_call(build_user_message(tasks, language, request.question))
             if answer.strip():
@@ -341,7 +350,15 @@ def ask_assistant(
                 return build_response(answer, name, "advice", tasks)
         except Exception as error:
             print(f"{name} error, trying next option:", error)
+            if isinstance(error, QuotaExceededError):
+                quota_reached = True
 
     # 3) Үнэгүй дүрмийн зөвлөмж
     print(f"assistant: {time.perf_counter() - started:.1f}s")
-    return build_response(rule_based_advice(tasks, language), "rules", "rules", tasks)
+    return build_response(
+        rule_based_advice(tasks, language),
+        "rules",
+        "rules",
+        tasks,
+        notice="ai_quota" if quota_reached else None,
+    )

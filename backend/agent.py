@@ -25,12 +25,15 @@ from backend import assignments as assignment_service
 from backend.assignments import AssignmentCreate, AssignmentUpdate
 from backend.courses import COURSE_SELECT, course_to_dict
 from backend.database import get_connection
+from backend.gemini_models import call_with_model_fallback
 
 MAX_TOOL_STEPS = 6
 import time
 
-# Түр зуурын алдаа (ачаалал, хязгаар) гарвал хэдэн секунд хүлээгээд дахин оролдоно.
-RETRYABLE_ERRORS = ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED")
+# Түр зуурын ачааллын алдаа гарвал хэдэн секунд хүлээгээд дахин оролдоно.
+# 429 (хязгаар дууссан)-ыг энд давтахгүй: хүлээгээд ч засагдахгүй тул
+# gemini_models.call_with_model_fallback өөр model руу шилжинэ.
+RETRYABLE_ERRORS = ("503", "UNAVAILABLE")
 
 
 def call_with_retry(func, attempts: int = 3, delay: float = 1.5):
@@ -303,7 +306,8 @@ def run_gemini_agent(message: str, executor: ToolExecutor, client=None, model: s
             http_options=types.HttpOptions(timeout=30_000),
         )
 
-    model = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    # model-ийг заагаагүй бол .env-ийн жагсаалтаас (хязгаар дууссаныг алгасаж) сонгоно.
+    models = [model] if model else None
     declarations = [
         types.FunctionDeclaration(
             name=tool["name"],
@@ -336,11 +340,15 @@ def run_gemini_agent(message: str, executor: ToolExecutor, client=None, model: s
     for step in range(MAX_TOOL_STEPS + 1):
         # Хязгаарт хүрвэл хэрэгсэлгүйгээр эцсийн хариу бичүүлнэ.
         allow_tools = step < MAX_TOOL_STEPS
-        response = call_with_retry(lambda: client.models.generate_content(
-            model=model,
-            contents=contents,
-            config=make_config(allow_tools),
-        ))
+        config = make_config(allow_tools)
+        response = call_with_model_fallback(
+            lambda name: call_with_retry(lambda: client.models.generate_content(
+                model=name,
+                contents=contents,
+                config=config,
+            )),
+            models,
+        )
 
         calls = response.function_calls or []
         if not calls or not allow_tools:

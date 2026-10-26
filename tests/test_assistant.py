@@ -126,6 +126,7 @@ def test_assistant_uses_agent_when_available(client, user_headers, create_assign
         "mode": "agent",
         "actions": [],
         "assignment_count": 1,
+        "notice": None,
     }
     assert '"title": "Essay"' in sent["message"]
     assert "reply_language: en" in sent["message"]

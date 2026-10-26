@@ -1638,6 +1638,20 @@ body:has(#auth-section:not([hidden])) footer {
     color: #3949ab;
 }
 
+.chat-notice {
+    margin: 10px 0 0;
+    padding: 8px 12px;
+    border-radius: var(--radius-small);
+    background: var(--color-soon-soft);
+    color: #92400e;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+[data-theme="dark"] .chat-notice {
+    color: #fcd34d;
+}
+
 .chat-source-rules,
 .chat-source-local {
     background: #eceff1;
@@ -1815,13 +1829,57 @@ footer {
         display: none;
     }
 
-    /* Утсан дээр AI цонх бүтэн дэлгэц */
+    /* Утсан дээр AI цонх бүтэн дэлгэц.
+       Өндөр нь keyboard-ын дээрх харагдах хэсэгтэй тэнцүү (views.js тохируулна). */
     .assistant {
-        inset: 0;
+        top: var(--viewport-top, 0);
+        right: 0;
+        bottom: auto;
+        left: 0;
         width: auto;
+        height: var(--viewport-height, 100dvh);
         max-height: none;
         border-radius: 0;
         z-index: 60;
+    }
+
+    /* Агуулга цонхноос хэтэрвэл iPhone хуудсыг гүйлгэж, гарчиг дэлгэцээс гардаг.
+       Тиймээс бүх зүйл цонхны өндөрт багтах ёстой: чат л жижгэрнэ. */
+    .assistant {
+        overflow: hidden;
+        padding: 14px 16px;
+    }
+
+    .assistant .chat-messages {
+        min-height: 0;
+        margin-bottom: 10px;
+    }
+
+    .assistant .chat-form {
+        flex-direction: row;
+    }
+
+    .assistant .chat-form button {
+        width: auto;
+        flex: none;
+    }
+
+    .assistant.is-compact .assistant-description {
+        display: none;
+    }
+
+    .assistant.is-compact .chat-messages {
+        margin-top: 8px;
+    }
+
+    /* Цонх нээлттэй үед ард байгаа хуудас гүйлгэгдэхгүй */
+    body.assistant-open {
+        overflow: hidden;
+    }
+
+    /* iPhone 16px-ээс жижиг талбарт бичихэд хуудсыг томруулдаг тул */
+    .chat-form input {
+        font-size: 16px;
     }
 
     .assignment-form {

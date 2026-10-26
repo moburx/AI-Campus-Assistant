@@ -18,6 +18,7 @@ from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
 
 from backend.agent import call_with_retry
+from backend.gemini_models import QuotaExceededError, call_with_model_fallback
 from backend.database import get_connection
 from backend.notices import BASE_URL, REQUEST_TIMEOUT_SECONDS, USER_AGENT
 
@@ -51,6 +52,10 @@ class NotFoundError(Exception):
 
 class AIUnavailableError(Exception):
     pass
+
+
+class AIQuotaError(AIUnavailableError):
+    """Gemini-ийн өнөөдрийн үнэгүй хязгаар бүх model дээр дууссан."""
 
 
 class NoticeDetailParser(HTMLParser):
@@ -198,18 +203,24 @@ def summarize_with_gemini(notice: dict, detail: dict, language: str, client=None
     for image in detail.get("image_data", []):
         parts.append(types.Part.from_bytes(data=image["data"], mime_type=image["mime_type"]))
 
-    response = call_with_retry(lambda: client.models.generate_content(
-        model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
-        contents=[types.Content(role="user", parts=parts)],
-        config=types.GenerateContentConfig(
-            system_instruction=SUMMARY_PROMPT,
-            max_output_tokens=MAX_OUTPUT_TOKENS,
-            # "Бодох" алхмыг багасгавал хариунд илүү токен үлдэж, хурдан болно.
-            thinking_config=types.ThinkingConfig(
-                thinking_level=os.getenv("GEMINI_THINKING_LEVEL", "LOW"),
-            ),
+    config = types.GenerateContentConfig(
+        system_instruction=SUMMARY_PROMPT,
+        max_output_tokens=MAX_OUTPUT_TOKENS,
+        # "Бодох" алхмыг багасгавал хариунд илүү токен үлдэж, хурдан болно.
+        thinking_config=types.ThinkingConfig(
+            thinking_level=os.getenv("GEMINI_THINKING_LEVEL", "LOW"),
         ),
-    ))
+    )
+    try:
+        response = call_with_model_fallback(lambda model: call_with_retry(
+            lambda: client.models.generate_content(
+                model=model,
+                contents=[types.Content(role="user", parts=parts)],
+                config=config,
+            )
+        ))
+    except QuotaExceededError as error:
+        raise AIQuotaError(str(error)) from error
 
     # Тасархай хариуг хадгалахгүй (хадгалбал дахин дарахад ч тасархай гарна).
     finish_reason = response.candidates[0].finish_reason if response.candidates else None

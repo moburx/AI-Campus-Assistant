@@ -63,6 +63,8 @@ def summarize_notice(
         return notice_summary.get_or_create_summary(notice_id, language)
     except notice_summary.NotFoundError:
         raise HTTPException(status_code=404, detail="Notice not found.")
+    except notice_summary.AIQuotaError:
+        raise HTTPException(status_code=503, detail="AI daily limit reached.")
     except notice_summary.AIUnavailableError:
         raise HTTPException(status_code=503, detail="AI summary is not available right now.")
     except Exception as error:

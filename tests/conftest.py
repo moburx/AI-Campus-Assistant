@@ -21,6 +21,7 @@ os.environ.setdefault(
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+from backend import gemini_models  # noqa: E402
 from backend.main import app  # noqa: E402
 
 DEFAULT_PASSWORD = "password123"
@@ -34,6 +35,10 @@ def isolated_environment(tmp_path, monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     # Жинхэнэ .env-д EMAIL_MODE=smtp байсан ч тест имэйл илгээхгүй.
     monkeypatch.setenv("EMAIL_MODE", "console")
+    # Gemini model-ийн жагсаалт болон "хязгаар дууссан" тэмдэглэгээ тест бүрт шинэ.
+    monkeypatch.delenv("GEMINI_MODELS", raising=False)
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
+    gemini_models.reset_exhausted()
     yield
 
 

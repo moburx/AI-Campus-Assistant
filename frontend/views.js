@@ -190,10 +190,27 @@ function renderHome() {
 }
 
 // ---------- AI туслахын цонх ----------
+// iPhone дээр keyboard гарахад дэлгэцийн харагдах хэсэг (visual viewport) багасдаг.
+// Цонхыг тэр хэмжээнд тааруулахгүй бол дээд хэсэг (✕ товч) дэлгэцээс гарна.
+function fitAssistantToViewport() {
+    const viewport = window.visualViewport;
+    if (!viewport || assistantPanel.hidden) return;
+
+    assistantPanel.style.setProperty("--viewport-height", `${viewport.height}px`);
+    assistantPanel.style.setProperty("--viewport-top", `${viewport.offsetTop}px`);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", fitAssistantToViewport);
+    window.visualViewport.addEventListener("scroll", fitAssistantToViewport);
+}
+
 function openAssistant() {
     assistantPanel.hidden = false;
     assistantOpenButton.setAttribute("aria-expanded", "true");
     document.body.classList.add("assistant-open");
+    fitAssistantToViewport();
     chatInput.focus();
 }
 

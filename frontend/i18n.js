@@ -43,6 +43,8 @@ const TRANSLATIONS = {
 
         "auth.welcome": "🔐 환영합니다",
         "auth.loginTab": "로그인",
+        "assistant.quotaNotice": "오늘 AI 사용 한도에 도달해 기본 조언을 보여 드려요. 한도는 매일 초기화됩니다.",
+        "notices.aiQuota": "오늘 AI 사용 한도에 도달했어요. 내일 다시 시도해 주세요.",
         "theme.label": "화면 테마",
         "theme.auto": "자동",
         "theme.light": "라이트",
@@ -232,6 +234,8 @@ const TRANSLATIONS = {
 
         "auth.welcome": "🔐 Тавтай морил",
         "auth.loginTab": "Нэвтрэх",
+        "assistant.quotaNotice": "AI-ийн өнөөдрийн хэрэглээний хязгаар дууссан тул үндсэн зөвлөмж харуулж байна. Хязгаар өдөр бүр шинэчлэгдэнэ.",
+        "notices.aiQuota": "AI-ийн өнөөдрийн хязгаар дууссан. Маргааш дахин оролдоорой.",
         "theme.label": "Дэлгэцийн өнгө",
         "theme.auto": "Авто",
         "theme.light": "Цайвар",
@@ -421,6 +425,8 @@ const TRANSLATIONS = {
 
         "auth.welcome": "🔐 欢迎",
         "auth.loginTab": "登录",
+        "assistant.quotaNotice": "今日AI使用次数已达上限，现显示基本建议。次数每天重置。",
+        "notices.aiQuota": "今日AI使用次数已达上限，请明天再试。",
         "theme.label": "外观",
         "theme.auto": "自动",
         "theme.light": "浅色",
@@ -610,6 +616,8 @@ const TRANSLATIONS = {
 
         "auth.welcome": "🔐 Добро пожаловать",
         "auth.loginTab": "Вход",
+        "assistant.quotaNotice": "Дневной лимит AI исчерпан, поэтому показан базовый совет. Лимит обновляется каждый день.",
+        "notices.aiQuota": "Дневной лимит AI исчерпан. Попробуйте завтра.",
         "theme.label": "Тема",
         "theme.auto": "Авто",
         "theme.light": "Светлая",
@@ -799,6 +807,8 @@ const TRANSLATIONS = {
 
         "auth.welcome": "🔐 Chào mừng",
         "auth.loginTab": "Đăng nhập",
+        "assistant.quotaNotice": "Đã hết giới hạn AI hôm nay nên hiển thị gợi ý cơ bản. Giới hạn được đặt lại mỗi ngày.",
+        "notices.aiQuota": "Đã hết giới hạn AI hôm nay. Vui lòng thử lại vào ngày mai.",
         "theme.label": "Giao diện",
         "theme.auto": "Tự động",
         "theme.light": "Sáng",
@@ -988,6 +998,8 @@ const TRANSLATIONS = {
 
         "auth.welcome": "🔐 Welcome",
         "auth.loginTab": "Log in",
+        "assistant.quotaNotice": "Today's AI limit has been reached, so this is basic advice. The limit resets every day.",
+        "notices.aiQuota": "Today's AI limit has been reached. Please try again tomorrow.",
         "theme.label": "Theme",
         "theme.auto": "Auto",
         "theme.light": "Light",

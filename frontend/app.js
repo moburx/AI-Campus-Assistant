@@ -79,6 +79,7 @@ function clearSession() {
 const ERROR_TRANSLATIONS = {
     "AI summary is not available right now.": "notices.aiUnavailable",
     "Could not summarize this notice.": "notices.summaryFailed",
+    "AI daily limit reached.": "notices.aiQuota",
     "Username or email already exists.": "auth.userExists",
     "Invalid username or password.": "auth.invalidLogin",
     "A course with this name already exists.": "courses.exists",
@@ -776,7 +777,7 @@ function createActionList(actions) {
     return list;
 }
 
-function addChatMessage(message, sender, source = null, actions = []) {
+function addChatMessage(message, sender, source = null, actions = [], notice = null) {
     const element = document.createElement("div");
     element.classList.add("chat-message");
     element.classList.add(sender === "user" ? "user-message" : "bot-message");
@@ -788,6 +789,15 @@ function addChatMessage(message, sender, source = null, actions = []) {
 
         if (actions.length > 0) {
             element.appendChild(createActionList(actions));
+        }
+
+        // AI-ийн өдрийн хязгаар дууссан бол яагаад энгийн зөвлөмж гарсныг тайлбарлана.
+        if (notice === "ai_quota") {
+            const note = document.createElement("p");
+            note.className = "chat-notice";
+            note.dataset.i18n = "assistant.quotaNotice";
+            note.textContent = t("assistant.quotaNotice");
+            element.appendChild(note);
         }
 
         if (source) {
@@ -851,7 +861,7 @@ chatForm.addEventListener("submit", async event => {
         pending.remove();
 
         const actions = data.actions || [];
-        addChatMessage(data.answer, "bot", data.source, actions);
+        addChatMessage(data.answer, "bot", data.source, actions, data.notice);
 
         // AI даалгавар өөрчилсөн бол жагсаалт, календарь, статистикийг шинэчилнэ.
         if (actions.some(action => action.ok)) {
