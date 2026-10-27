@@ -12,6 +12,7 @@ AI Campus Assistant는 대학생이 과제와 마감일을 효율적으로 관�
 
 ### 사용자 인증
 - 회원가입 및 로그인
+- **이메일 인증:** 가입하면 사용자가 선택한 언어로 6자리 코드를 메일로 보내고, 코드를 입력해야 로그인 가능
 - Argon2 기반 비밀번호 해시 처리
 - JWT(JSON Web Token)를 이용한 인증
 - 인증된 사용자 정보 조회 및 언어 설정 변경
@@ -65,7 +66,7 @@ AI Campus Assistant는 대학생이 과제와 마감일을 효율적으로 관�
 - `EMAIL_MODE=console`(기본값): 실제로 보내지 않고 터미널에 출력 (개발·테스트용)
 - `EMAIL_MODE=smtp`: Gmail 등 SMTP 서버로 실제 발송 (STARTTLS, 인증서 검증, 15초 타임아웃)
 - 수신자·제목에 줄바꿈이 있으면 거부 (헤더 인젝션 방지)
-- 다음 단계에서 회원가입 이메일 인증, 공지 알림 메일에 사용할 예정
+- 회원가입 이메일 인증에 사용 중, 이후 공지 알림 메일에도 사용할 예정
 
 ### 화면 구성 및 디자인
 - 로그인 화면: 그라디언트 배경과 카드형 로그인·회원가입
@@ -113,6 +114,7 @@ AI-Campus-Assistant/
 │   ├── notices_api.py   # 공지 목록·새로 고침·AI 설명 API
 │   ├── notice_summary.py # 공지 본문·이미지 읽기, Gemini로 사용자 언어 설명, 캐시
 │   ├── gemini_models.py # Gemini 무료 한도 초과 시 모델 전환
+│   ├── verification.py  # 회원가입 이메일 인증 (6자리 코드)
 │   └── mailer.py        # 이메일 발송 (console / smtp)
 ├── frontend/
 │   ├── index.html
@@ -141,7 +143,8 @@ AI-Campus-Assistant/
 
 | 테이블 | 주요 컬럼 |
 |---|---|
-| `users` | id, username, email, password_hash, country, preferred_language |
+| `users` | id, username, email, password_hash, country, preferred_language, email_verified |
+| `email_verifications` | user_id, code_hash, expires_at, attempts, last_sent_at — 인증 코드(해시)와 시도 횟수 |
 | `courses` | id, user_id, name, color — (user_id, name) 중복 불가 |
 | `assignments` | id, user_id, course_id, title, course, deadline, priority, notes, completed, completed_at |
 | `notices` | id, board_id, ntt_id, title, writer, posted_at, pinned, url, fetched_at — (board_id, ntt_id) 중복 불가 |
@@ -257,7 +260,9 @@ CORS 설정상 `http://127.0.0.1:5500`과 `http://localhost:5500`에서의 요�
 | GET | `/api` | API 기본 경로 |
 | GET | `/api/health` | 서버 상태 확인 |
 | POST | `/api/auth/register` | 회원가입 |
-| POST | `/api/auth/login` | 로그인 |
+| POST | `/api/auth/login` | 로그인 (이메일 미인증이면 403) |
+| POST | `/api/auth/verify` | 6자리 코드 확인 → 인증 완료 후 바로 로그인 (토큰 발급) |
+| POST | `/api/auth/resend` | 인증 코드 다시 보내기 (60초에 한 번) |
 | GET | `/api/auth/me` | 현재 인증된 사용자 정보 조회 |
 | PATCH | `/api/auth/me` | 언어·국가 설정 변경 |
 | GET | `/api/assignments` | 과제 목록 조회 (`?status=`, `?course_id=` 필터) |
@@ -384,6 +389,14 @@ Gemini는 `google-genai`의 function calling, Claude는 Anthropic API의 tool us
 - API 키는 백엔드의 환경 변수에만 저장되며 브라우저에 노출되지 않습니다.
 - 환경 변수 파일과 데이터베이스 파일이 공개 저장소에 포함되지 않도록 관리합니다.
 
+### 이메일 인증
+
+- 인증 코드는 `secrets` 모듈로 만든 6자리 숫자이며, DB에는 원문이 아니라 HMAC-SHA256 해시만 저장합니다.
+- 코드는 10분 동안 유효하고, 5번 틀리면 올바른 코드도 거부되어 새 코드를 받아야 합니다.
+- 다시 보내기는 60초에 한 번만 가능하며, 존재하지 않는 사용자에게도 같은 응답을 주어 가입 여부가 드러나지 않게 했습니다.
+- 미인증 상태는 비밀번호가 맞을 때만 알려 줍니다 (비밀번호 없이 계정 상태를 확인할 수 없음).
+- 이 기능 이전에 가입한 사용자는 자동으로 인증된 것으로 처리합니다 (`DEFAULT 1` 마이그레이션).
+
 ### 개인정보 관련 안내
 
 AI 기능을 사용할 때 사용자의 메시지와 과제 **제목, 과목명, 마감일, 중요도, 메모(앞부분 200자)**가 외부 AI 서비스(Google 또는 Anthropic)로 전송됩니다. 비밀번호와 이메일은 전송되지 않습니다. 공지 AI 설명 기능은 학교 홈페이지에 공개된 공지 내용만 전송하며, 사용자 정보는 전송하지 않습니다.
@@ -398,7 +411,7 @@ AI 기능을 사용할 때 사용자의 메시지와 과제 **제목, 과목명,
 
 ### 9.1 자동화 테스트 (pytest)
 
-`tests/` 폴더에 180개의 테스트가 있으며 모두 통과합니다.
+`tests/` 폴더에 204개의 테스트가 있으며 모두 통과합니다.
 
 | 파일 | 내용 | 테스트 수 |
 |---|---|---|
@@ -414,6 +427,7 @@ AI 기능을 사용할 때 사용자의 메시지와 과제 **제목, 과목명,
 | `test_notices_api.py` | 공지 목록, 새로 고침 10분 제한, 인증 필요 | 6 |
 | `test_notice_summary.py` | 상세 페이지 파싱, 외부 도메인 이미지 차단, 언어별 캐시, AI 없음 503, 잘린 답변 미저장 | 13 |
 | `test_gemini_models.py` | 무료 한도(429) 시 다음 모델로 전환, 재시도 대기 시간 읽기, 한도 초과 모델 건너뛰기, 사용자 안내 | 17 |
+| `test_verification.py` | 코드 메일 발송(언어별), 해시 저장, 미인증 로그인 403, 오답·만료·5회 초과, 다시 보내기 대기 시간, 가입 여부 비공개, 기존 사용자 마이그레이션 | 24 |
 | `test_mailer.py` | console/smtp 모드, STARTTLS·인증서 검증, 앱 비밀번호 오류 안내, 헤더 인젝션 차단 | 15 |
 
 학교 홈페이지 테스트는 실제 페이지를 `tests/fixtures/`에 저장해 두고 사용하므로, 테스트 중 학교 서버에 요청을 보내지 않습니다. 이 HTML 파일들은 직접 작성한 코드가 아니므로 코드 줄 수에 포함하지 않습니다 (fixtures 제외 시 Python·JavaScript·HTML·CSS 약 9,800줄).
@@ -444,7 +458,6 @@ AI 기능을 사용할 때 사용자의 메시지와 과제 **제목, 과목명,
 ## 10. 향후 개선 사항
 
 - 프런트엔드 자동화 테스트 (예: Playwright)
-- 회원가입 이메일 인증 (6자리 코드)
 - 새 공지사항 이메일 알림
 - AI 요청에 사용자별 요청 횟수 제한(rate limit) 적용
 - 에이전트 대화 기록 저장 (이전 대화를 이어서 이해)
@@ -560,3 +573,12 @@ AI 기능을 사용할 때 사용자의 메시지와 과제 **제목, 과목명,
     - 모든 모델이 한도 초과면 채팅에 "오늘 AI 사용 한도에 도달해 기본 조언을 보여 드려요" 안내 (6개 언어)
   - 테스트 17개 추가 (총 180개)
 - **배운 점:** 무료 API는 한도가 있다는 전제로 설계해야 한다. 재시도는 "기다리면 해결되는 오류"에만 의미가 있다.
+- **회원가입 이메일 인증 (6자리 코드)**
+  - 가입 → 코드 메일 → 코드 입력 → 바로 로그인. 6자리를 입력하면 자동 제출, 다시 보내기 버튼에 남은 시간 표시
+  - 테스트용 회원가입 함수(`conftest.py`)도 실제처럼 메일함(console 모드의 outbox)에서 코드를 읽어 인증하도록 변경
+  - **테스트로 발견한 버그:** "5번 틀리면 올바른 코드도 거부" 테스트가 실패 → 틀린 횟수를 저장한 뒤 같은 `with` 블록 안에서 예외를 던져 SQLite가 변경을 되돌리고(rollback) 있었음 → 저장한 뒤 블록 밖에서 예외를 던지도록 수정
+  - **수동 테스트에서 발견한 문제**
+    - 서버 로그에 가입 요청이 두 번(409, 201) → 버튼을 두 번 누름 → 요청 중에는 제출 버튼 비활성화
+    - 테스트 가입에 `test03@gmail.com`을 입력해 실제 메일이 발송됨 → 다른 사람의 실제 주소일 수 있으므로 테스트에는 `내주소+test@gmail.com`(Gmail의 + 주소)이나 `example.com` + console 모드를 사용
+  - 테스트 24개 추가 (총 204개)
+- **배운 점:** 데이터베이스 트랜잭션 안에서 예외를 던지면 그 전의 변경도 사라진다. 보안 규칙("5번 제한")은 실제로 동작하는지 테스트로 확인해야 한다.
