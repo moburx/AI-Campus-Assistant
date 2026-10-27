@@ -78,7 +78,7 @@ def find_user(username: str):
     with get_connection() as connection:
         return connection.execute(
             """
-            SELECT id, username, email, country, preferred_language, email_verified
+            SELECT id, username, email, country, preferred_language, email_verified, reminders_enabled
             FROM users WHERE username = ?
             """,
             (username.strip(),),
@@ -178,6 +178,7 @@ def public_user(row) -> dict:
         "email": row["email"],
         "country": row["country"],
         "preferred_language": row["preferred_language"],
+        "reminders_enabled": bool(row["reminders_enabled"]),
     }
 
 

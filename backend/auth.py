@@ -59,14 +59,19 @@ def get_user_by_id(user_id: int):
     with get_connection() as connection:
         user = connection.execute(
             """
-            SELECT id, username, email, country, preferred_language
+            SELECT id, username, email, country, preferred_language, reminders_enabled
             FROM users
             WHERE id = ?
             """,
             (user_id,),
         ).fetchone()
 
-    return dict(user) if user is not None else None
+    if user is None:
+        return None
+
+    data = dict(user)
+    data["reminders_enabled"] = bool(data["reminders_enabled"])
+    return data
 
 
 def get_current_user(

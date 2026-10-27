@@ -43,6 +43,9 @@ const TRANSLATIONS = {
 
         "auth.welcome": "🔐 환영합니다",
         "auth.loginTab": "로그인",
+        "reminders.toggle": "마감 전에 이메일로 알려 주기",
+        "reminders.hint": "내일·오늘 마감인 과제를 매일 아침 9시에 메일로 보내 드려요.",
+        "reminders.saveFailed": "알림 설정을 저장하지 못했어요.",
         "verify.code": "인증 코드",
         "verify.submit": "인증하기",
         "verify.resend": "코드 다시 보내기",
@@ -247,6 +250,9 @@ const TRANSLATIONS = {
 
         "auth.welcome": "🔐 Тавтай морил",
         "auth.loginTab": "Нэвтрэх",
+        "reminders.toggle": "Хугацаа дуусахаас өмнө имэйлээр сануулах",
+        "reminders.hint": "Маргааш болон өнөөдөр дуусах даалгаврыг өглөө бүр 9 цагт имэйлээр илгээнэ.",
+        "reminders.saveFailed": "Сануулгын тохиргоог хадгалж чадсангүй.",
         "verify.code": "Баталгаажуулах код",
         "verify.submit": "Баталгаажуулах",
         "verify.resend": "Код дахин илгээх",
@@ -451,6 +457,9 @@ const TRANSLATIONS = {
 
         "auth.welcome": "🔐 欢迎",
         "auth.loginTab": "登录",
+        "reminders.toggle": "截止前发送邮件提醒",
+        "reminders.hint": "每天早上9点通过邮件提醒今天和明天截止的作业。",
+        "reminders.saveFailed": "无法保存提醒设置。",
         "verify.code": "验证码",
         "verify.submit": "验证",
         "verify.resend": "重新发送验证码",
@@ -655,6 +664,9 @@ const TRANSLATIONS = {
 
         "auth.welcome": "🔐 Добро пожаловать",
         "auth.loginTab": "Вход",
+        "reminders.toggle": "Напоминать по почте о сроках",
+        "reminders.hint": "Каждое утро в 9:00 присылаем письмо о заданиях со сроком сегодня и завтра.",
+        "reminders.saveFailed": "Не удалось сохранить настройку напоминаний.",
         "verify.code": "Код подтверждения",
         "verify.submit": "Подтвердить",
         "verify.resend": "Отправить код ещё раз",
@@ -859,6 +871,9 @@ const TRANSLATIONS = {
 
         "auth.welcome": "🔐 Chào mừng",
         "auth.loginTab": "Đăng nhập",
+        "reminders.toggle": "Nhắc qua email trước hạn chót",
+        "reminders.hint": "Mỗi sáng 9 giờ gửi email về bài tập hết hạn hôm nay và ngày mai.",
+        "reminders.saveFailed": "Không lưu được cài đặt nhắc nhở.",
         "verify.code": "Mã xác minh",
         "verify.submit": "Xác minh",
         "verify.resend": "Gửi lại mã",
@@ -1063,6 +1078,9 @@ const TRANSLATIONS = {
 
         "auth.welcome": "🔐 Welcome",
         "auth.loginTab": "Log in",
+        "reminders.toggle": "Email me before deadlines",
+        "reminders.hint": "Every morning at 9, we email you what's due today and tomorrow.",
+        "reminders.saveFailed": "Couldn't save the reminder setting.",
         "verify.code": "Verification code",
         "verify.submit": "Verify",
         "verify.resend": "Resend code",

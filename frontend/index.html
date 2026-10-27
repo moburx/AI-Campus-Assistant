@@ -193,6 +193,16 @@
             <section id="assignments" class="panel assignment-manager" data-view="assignments">
                 <h2 data-i18n="assign.title">Assignments</h2>
 
+                <!-- Дуусах хугацааны имэйл сануулга -->
+                <label class="reminder-toggle">
+                    <input id="reminders-toggle" type="checkbox" role="switch">
+                    <span class="reminder-switch" aria-hidden="true"></span>
+                    <span>
+                        <strong data-i18n="reminders.toggle">Email me before deadlines</strong>
+                        <small data-i18n="reminders.hint"></small>
+                    </span>
+                </label>
+
                 <form id="assignment-form" class="assignment-form">
                     <div class="form-field form-field-wide">
                         <label for="assignment-title" data-i18n="assign.name">Assignment title</label>

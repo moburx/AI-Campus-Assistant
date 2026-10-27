@@ -14,6 +14,9 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# Тестийн үеэр арын сануулгын thread ажиллахгүй.
+os.environ["REMINDERS_ENABLED"] = "0"
+
 # backend.auth-ийг import хийхээс өмнө тохируулах ёстой.
 os.environ.setdefault(
     "JWT_SECRET_KEY",

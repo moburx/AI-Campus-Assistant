@@ -158,6 +158,13 @@ def init_database():
             "email_verified",
             "INTEGER NOT NULL DEFAULT 1",
         )
+        # Дуусах хугацааны имэйл сануулга (хэрэглэгч унтрааж болно).
+        add_column_if_missing(
+            connection,
+            "users",
+            "reminders_enabled",
+            "INTEGER NOT NULL DEFAULT 1",
+        )
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS email_verifications (
@@ -200,6 +207,20 @@ def init_database():
             "assignments",
             "completed_at",
             "TEXT",
+        )
+
+        # Ямар даалгаврыг аль хугацаагаар (D-1 / D-day) сануулсныг тэмдэглэнэ.
+        # deadline багтсан тул хугацааг өөрчилбөл шинэ хугацаагаар дахин сануулна.
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS deadline_reminders (
+                assignment_id INTEGER NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+                kind TEXT NOT NULL,
+                deadline TEXT NOT NULL,
+                sent_at TEXT NOT NULL,
+                PRIMARY KEY (assignment_id, kind, deadline)
+            )
+            """
         )
 
         # Аппын жижиг тохиргоо/төлөв (жишээ нь мэдэгдлийг сүүлд хэзээ татсан).

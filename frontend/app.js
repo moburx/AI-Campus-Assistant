@@ -39,6 +39,7 @@ const verifyIntro = document.getElementById("verify-intro");
 const verifyCodeInput = document.getElementById("verify-code");
 const verifyResendButton = document.getElementById("verify-resend");
 const verifyBackButton = document.getElementById("verify-back");
+const remindersToggle = document.getElementById("reminders-toggle");
 
 const assignmentForm = document.getElementById("assignment-form");
 const searchInput = document.getElementById("assignment-search");
@@ -264,6 +265,7 @@ function showApp(user) {
     }
 
     renderGreeting();
+    remindersToggle.checked = user.reminders_enabled !== false;
 }
 
 function logout() {
@@ -320,6 +322,21 @@ async function loginUser(username, password) {
 
     await startSession(await response.json());
     return true;
+}
+
+// Хүсэлт явж байхад товчийг дахин дарвал (эсвэл Enter + товч) давхар илгээгдэхгүй.
+// Түгжиж чадвал түгжээг тайлах функц, аль хэдийн түгжигдсэн бол null буцаана.
+function lockForm(form) {
+    if (form.dataset.busy) return null;
+
+    const button = form.querySelector('button[type="submit"]');
+    form.dataset.busy = "1";
+    button.disabled = true;
+
+    return () => {
+        delete form.dataset.busy;
+        button.disabled = false;
+    };
 }
 
 // ---------- Имэйл баталгаажуулалт ----------
@@ -381,6 +398,9 @@ verifyForm.addEventListener("submit", async event => {
     event.preventDefault();
     if (!pendingVerification) return;
 
+    const unlock = lockForm(verifyForm);
+    if (!unlock) return;
+
     try {
         const response = await publicPost("/auth/verify", {
             username: pendingVerification.username,
@@ -398,6 +418,8 @@ verifyForm.addEventListener("submit", async event => {
     } catch (error) {
         showAuthMessage(error.message);
         verifyCodeInput.select();
+    } finally {
+        unlock();
     }
 });
 
@@ -443,6 +465,9 @@ loginForm.addEventListener("submit", async event => {
     const username = document.getElementById("login-username").value.trim();
     const password = document.getElementById("login-password").value;
 
+    const unlock = lockForm(loginForm);
+    if (!unlock) return;
+
     try {
         if (await loginUser(username, password)) {
             loginForm.reset();
@@ -450,6 +475,8 @@ loginForm.addEventListener("submit", async event => {
         }
     } catch (error) {
         showAuthMessage(error.message);
+    } finally {
+        unlock();
     }
 });
 
@@ -463,6 +490,9 @@ registerForm.addEventListener("submit", async event => {
         country: document.getElementById("register-country").value.trim() || "Other",
         preferred_language: registerLanguage.value
     };
+
+    const unlock = lockForm(registerForm);
+    if (!unlock) return;
 
     try {
         const response = await publicPost("/auth/register", payload);
@@ -483,6 +513,27 @@ registerForm.addEventListener("submit", async event => {
         }
     } catch (error) {
         showAuthMessage(error.message);
+    } finally {
+        unlock();
+    }
+});
+
+// ---------- Дуусах хугацааны сануулга ----------
+remindersToggle.addEventListener("change", async () => {
+    const enabled = remindersToggle.checked;
+    remindersToggle.disabled = true;
+
+    try {
+        currentUser = await apiJson("/auth/me", {
+            method: "PATCH",
+            body: JSON.stringify({ reminders_enabled: enabled })
+        }, "reminders.saveFailed");
+        localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
+    } catch (error) {
+        remindersToggle.checked = !enabled; // хадгалж чадаагүй бол буцаана
+        alert(error.message);
+    } finally {
+        remindersToggle.disabled = false;
     }
 });
 

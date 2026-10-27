@@ -9,7 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 
-from backend import assignments, assistant, courses, mailer, notices_api, stats, verification
+from backend import assignments, assistant, courses, mailer, notices_api, reminders, stats, verification
 from backend.assignments import clean_text
 from backend.auth import (
     LanguageCode,
@@ -24,7 +24,10 @@ from backend.database import get_connection, init_database
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_database()
+    # Дуусах хугацааны сануулгыг арын thread-д шалгана (REMINDERS_ENABLED=0 бол ажиллахгүй).
+    reminders.start_background_reminders()
     yield
+    reminders.stop_background_reminders()
 
 
 app = FastAPI(
@@ -85,6 +88,7 @@ class UserLogin(BaseModel):
 class UserUpdate(BaseModel):
     country: Optional[str] = Field(default=None, min_length=1, max_length=50)
     preferred_language: Optional[LanguageCode] = None
+    reminders_enabled: Optional[bool] = None
 
 
 # ---------- Ерөнхий ----------
@@ -177,7 +181,7 @@ def login_user(user: UserLogin):
         row = connection.execute(
             """
             SELECT id, username, email, password_hash,
-                   country, preferred_language, email_verified
+                   country, preferred_language, email_verified, reminders_enabled
             FROM users
             WHERE username = ?
             """,
@@ -211,6 +215,7 @@ def login_user(user: UserLogin):
             "email": row["email"],
             "country": row["country"],
             "preferred_language": row["preferred_language"],
+            "reminders_enabled": bool(row["reminders_enabled"]),
         },
         "message": "Login successful.",
     }
@@ -234,6 +239,9 @@ def update_me(
 
     if update.country is not None:
         changes["country"] = clean_text(update.country, "Country")
+
+    if update.reminders_enabled is not None:
+        changes["reminders_enabled"] = int(update.reminders_enabled)
 
     if not changes:
         raise HTTPException(
