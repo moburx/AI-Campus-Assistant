@@ -7,10 +7,13 @@
 const NOTICE_NEW_DAYS = 3;          // сүүлийн 3 хоногийн мэдэгдэлд "NEW" тэмдэг
 const NOTICE_AUTO_REFRESH_HOURS = 6; // үүнээс хуучин бол нэвтрэхэд автоматаар шинэчилнэ
 const NOTICE_VISIBLE_COUNT = 8;      // эхэндээ харуулах тоо ("Дэлгэрэнгүй" дарвал бүгд)
+const NOTICE_LOAD_LIMIT = 150;       // серверээс авах дээд тоо (3 самбар × 3 хуудас ≈ 90)
+const NOTICE_SCOPE_KEY = "campus_notice_scope";
 
 let schoolNotices = [];
 let noticesLastRefreshed = null;
 let showAllNotices = false;
+let noticeScope = loadNoticeScope(); // "international" | "academic" | "all"
 
 // AI тайлбар: "мэдэгдлийн id:хэл" → текст. Нээлттэй байгаа мэдэгдлүүдийн id.
 const noticeSummaries = {};
@@ -21,12 +24,69 @@ const noticeList = document.getElementById("notice-list");
 const noticeStatus = document.getElementById("notices-status");
 const noticeRefreshButton = document.getElementById("notices-refresh");
 const noticeMoreButton = document.getElementById("notices-more");
+const noticeScopeButtons = document.querySelectorAll("[data-notice-scope]");
 
+function loadNoticeScope() {
+    try {
+        const saved = localStorage.getItem(NOTICE_SCOPE_KEY);
+        return ["academic", "all"].includes(saved) ? saved : "international";
+    } catch (error) {
+        return "international";
+    }
+}
+
+// Бүгдийг нэг удаа татаад, сонгосон хүрээгээр (scope) нь браузер дээр шүүнэ.
 async function loadNotices() {
-    const data = await apiJson("/notices?limit=30", {}, "notices.failed");
+    const data = await apiJson(`/notices?limit=${NOTICE_LOAD_LIMIT}&scope=all`, {}, "notices.failed");
     schoolNotices = data.notices;
     noticesLastRefreshed = data.last_refreshed;
 }
+
+function internationalNotices() {
+    return schoolNotices.filter(notice => notice.international !== false);
+}
+
+function academicNotices() {
+    return schoolNotices.filter(notice => notice.category === "academic");
+}
+
+function scopedNotices() {
+    if (noticeScope === "all") return schoolNotices;
+    if (noticeScope === "academic") return academicNotices();
+    return internationalNotices();
+}
+
+function renderNoticeScope() {
+    const counts = {
+        international: internationalNotices().length,
+        academic: academicNotices().length,
+        all: schoolNotices.length
+    };
+    const labels = {
+        international: "notices.scopeInternational",
+        academic: "notices.scopeAcademic",
+        all: "notices.scopeAll"
+    };
+
+    noticeScopeButtons.forEach(button => {
+        const scope = button.dataset.noticeScope;
+        button.setAttribute("aria-pressed", String(scope === noticeScope));
+        button.textContent = `${t(labels[scope])} ${counts[scope]}`;
+    });
+}
+
+noticeScopeButtons.forEach(button => {
+    button.addEventListener("click", () => {
+        noticeScope = button.dataset.noticeScope;
+        showAllNotices = false;
+        try {
+            localStorage.setItem(NOTICE_SCOPE_KEY, noticeScope);
+        } catch (error) {
+            // localStorage ашиглах боломжгүй орчин
+        }
+        renderNotices();
+    });
+});
 
 function resetNotices() {
     schoolNotices = [];
@@ -172,12 +232,14 @@ async function toggleSummary(notice) {
 
 function renderNotices() {
     noticeList.replaceChildren();
+    renderNoticeScope();
+    const list = scopedNotices();
 
     if (!noticeStatus.dataset.busy) {
         noticeStatus.textContent = formatRefreshTime(noticesLastRefreshed);
     }
 
-    if (schoolNotices.length === 0) {
+    if (list.length === 0) {
         const empty = document.createElement("li");
         empty.className = "empty-message";
         empty.textContent = t("notices.empty");
@@ -186,13 +248,13 @@ function renderNotices() {
         return;
     }
 
-    const visible = showAllNotices ? schoolNotices : schoolNotices.slice(0, NOTICE_VISIBLE_COUNT);
+    const visible = showAllNotices ? list : list.slice(0, NOTICE_VISIBLE_COUNT);
     visible.forEach(notice => noticeList.appendChild(createNoticeItem(notice)));
 
-    noticeMoreButton.hidden = schoolNotices.length <= NOTICE_VISIBLE_COUNT;
+    noticeMoreButton.hidden = list.length <= NOTICE_VISIBLE_COUNT;
     noticeMoreButton.textContent = showAllNotices
         ? t("notices.showLess")
-        : t("notices.showMore", { n: schoolNotices.length - NOTICE_VISIBLE_COUNT });
+        : t("notices.showMore", { n: list.length - NOTICE_VISIBLE_COUNT });
 }
 
 async function refreshNotices({ quiet = false } = {}) {

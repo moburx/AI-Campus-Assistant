@@ -8,7 +8,7 @@ POST /api/notices/{id}/summary   мэдэгдлийг хэрэглэгчийн �
 секундэд нэг удаа л зөвшөөрнө. Хэн ч дарсан ижил хязгаар үйлчилнэ.
 """
 
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -22,11 +22,16 @@ REFRESH_COOLDOWN_SECONDS = 10 * 60
 
 @router.get("")
 def get_notices(
-    limit: int = Query(default=30, ge=1, le=100),
+    limit: int = Query(default=30, ge=1, le=200),
+    scope: Literal["international", "academic", "all"] = "all",
     current_user: dict = Depends(get_current_user),
 ):
     return {
-        "notices": notices.list_saved_notices(limit),
+        "notices": notices.list_saved_notices(
+            limit,
+            international_only=scope == "international",
+            category="academic" if scope == "academic" else None,
+        ),
         "last_refreshed": notices.get_last_refreshed(),
     }
 

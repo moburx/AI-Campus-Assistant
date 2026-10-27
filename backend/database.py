@@ -250,6 +250,14 @@ def init_database():
             )
             """
         )
+        # 1 = гадаад оюутанд хамаатай (олон улсын самбар эсвэл түлхүүр үгтэй).
+        # Өмнө нь зөвхөн хамаатайг нь хадгалдаг байсан тул хуучин мөрүүд 1.
+        add_column_if_missing(
+            connection,
+            "notices",
+            "international",
+            "INTEGER NOT NULL DEFAULT 1",
+        )
         # AI-аар хэрэглэгчийн хэлээр тайлбарласан мэдэгдэл (мэдэгдэл × хэл бүрт нэг).
         connection.execute(
             """

@@ -9,6 +9,7 @@
 """
 
 import re
+import time
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 
@@ -19,20 +20,42 @@ USER_AGENT = "AI-Campus-Assistant/1.0 (student project; notice reader)"
 REQUEST_TIMEOUT_SECONDS = 15
 
 # Унших самбарууд. keywords хоосон бол бүх мэдэгдлийг авна.
+# Гадаад оюутанд хамаатай гэж үзэх түлхүүр үгс (гарчигт орсон эсэхийг харна, том жижиг үсэг ялгахгүй).
+# "해외", "외국어", "어학"-ыг санаатайгаар оруулаагүй: эдгээр нь ихэвчлэн Солонгос оюутныг
+# гадаад руу явуулах хөтөлбөр, TOEIC-ийн мэдэгдлийг татдаг (2026-10-27 сайтыг шалгаж үзсэн).
+INTERNATIONAL_KEYWORDS = [
+    "외국인", "유학생", "국제", "international", "global", "글로벌", "visa", "비자",
+    "장학", "한국어", "topik", "교환학생", "체류", "출입국", "기숙사",
+    "외국인등록", "시간제취업", "건강보험", "생활관",
+]
+
+# keywords хоосон бол тухайн самбарын бүх мэдэгдэл "гадаад оюутанд" гэж тэмдэглэгдэнэ.
+# Ерөнхий самбарын мэдэгдлийг бүгдийг нь хадгална, түлхүүр үгтэйг нь л тэмдэглэнэ.
+# category: "international" (олон улсын хэлтэс), "academic" (сургалт), "general" (ерөнхий).
+# 090 Announcement самбарыг хассан: 2025-10 сараас хойш шинэчлэгдээгүй, хуучин TOEIC мэдэгдэл л байсан.
 SOURCES = {
     "BBSMSTR_000000000087": {
         "name": "국제교류원 Notice",
+        "category": "international",
         "keywords": [],
     },
-    "BBSMSTR_000000000090": {
-        "name": "국제교류원 Announcement",
-        "keywords": [],
+    "BBSMSTR_000000000042": {
+        "name": "학사공지",
+        "category": "academic",
+        "keywords": INTERNATIONAL_KEYWORDS,
     },
     "BBSMSTR_000000000050": {
         "name": "한밭대 공지사항",
-        "keywords": ["외국인", "유학생", "국제", "international", "global", "글로벌", "visa", "비자"],
+        "category": "general",
+        "keywords": INTERNATIONAL_KEYWORDS,
     },
 }
+
+CATEGORIES = ("international", "academic", "general")
+
+# Самбар бүрээс хэдэн хуудас унших (нэг хуудас ~10 мэдэгдэл), хуудас хооронд хэдэн секунд хүлээх.
+PAGES_PER_BOARD = 3
+PAGE_DELAY_SECONDS = 1.0
 
 DETAIL_ID_PATTERN = re.compile(r"fn_search_detail\('([^']+)'\)")
 DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -147,8 +170,14 @@ def is_relevant(notice: dict, keywords: list) -> bool:
     return any(keyword.lower() in title for keyword in keywords)
 
 
+def tag_international(notice: dict, board_id: str) -> dict:
+    keywords = SOURCES.get(board_id, {"keywords": []})["keywords"]
+    notice["international"] = is_relevant(notice, keywords)
+    return notice
+
+
 def fetch_board(board_id: str, page: int = 1, client=None) -> list:
-    """Самбарын нэг хуудсыг татаж, хамаатай мэдэгдлүүдийг буцаана."""
+    """Самбарын нэг хуудсыг татаж, бүх мэдэгдлийг "international" тэмдэгтэй нь буцаана."""
     import httpx
 
     source = SOURCES.get(board_id, {"keywords": []})
@@ -167,7 +196,43 @@ def fetch_board(board_id: str, page: int = 1, client=None) -> list:
             client.close()
 
     notices = parse_notice_list(response.text, board_id)
-    return [notice for notice in notices if is_relevant(notice, source["keywords"])]
+    return [tag_international(notice, board_id) for notice in notices]
+
+
+def fetch_recent(board_id: str, pages: int = None, client=None, sleep=time.sleep) -> list:
+    """Самбарын эхний хэдэн хуудсыг дарааллаар нь уншина.
+
+    Хуудас бүр дээр бэхлэгдсэн (pinned) мэдэгдэл давтагддаг тул шинэ мэдэгдэлгүй
+    хуудас гарвал цааш уншихгүй. Сургуулийн server-ийг ачааллахгүйн тулд хуудас
+    хооронд PAGE_DELAY_SECONDS хүлээнэ.
+    """
+    import httpx
+
+    pages = pages or PAGES_PER_BOARD
+    owns_client = client is None
+    client = client or httpx.Client(
+        headers={"User-Agent": USER_AGENT},
+        timeout=REQUEST_TIMEOUT_SECONDS,
+        follow_redirects=True,
+    )
+
+    collected = {}
+    try:
+        for page in range(1, pages + 1):
+            if page > 1:
+                sleep(PAGE_DELAY_SECONDS)
+
+            items = fetch_board(board_id, page=page, client=client)
+            new_items = [item for item in items if item["ntt_id"] not in collected]
+            if not new_items:
+                break
+            for item in new_items:
+                collected[item["ntt_id"]] = item
+    finally:
+        if owns_client:
+            client.close()
+
+    return list(collected.values())
 
 
 # ---------- DB-д хадгалах ----------
@@ -183,9 +248,9 @@ def save_notices(connection, items: list) -> int:
         cursor = connection.execute(
             """
             INSERT OR IGNORE INTO notices (
-                board_id, ntt_id, title, writer, posted_at, pinned, url
+                board_id, ntt_id, title, writer, posted_at, pinned, url, international
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 item["board_id"],
@@ -195,6 +260,7 @@ def save_notices(connection, items: list) -> int:
                 item["posted_at"],
                 int(item["pinned"]),
                 item["url"],
+                int(item.get("international", True)),
             ),
         )
 
@@ -203,10 +269,16 @@ def save_notices(connection, items: list) -> int:
         else:
             connection.execute(
                 """
-                UPDATE notices SET title = ?, pinned = ?
+                UPDATE notices SET title = ?, pinned = ?, international = ?
                 WHERE board_id = ? AND ntt_id = ?
                 """,
-                (item["title"], int(item["pinned"]), item["board_id"], item["ntt_id"]),
+                (
+                    item["title"],
+                    int(item["pinned"]),
+                    int(item.get("international", True)),
+                    item["board_id"],
+                    item["ntt_id"],
+                ),
             )
 
     return new_count
@@ -252,7 +324,7 @@ def seconds_since_last_refresh(now: datetime = None):
 
 def refresh_notices(fetch=None) -> dict:
     """Бүх эх сурвалжийг татаж хадгална. Нэг самбар алдаа өгсөн ч бусдыг үргэлжлүүлнэ."""
-    fetch = fetch or fetch_board
+    fetch = fetch or fetch_recent
     result = {"fetched": 0, "new": 0, "errors": []}
     set_last_refreshed(utc_now())
 
@@ -275,25 +347,42 @@ def notice_to_dict(row) -> dict:
         "id": row["id"],
         "board_id": row["board_id"],
         "source": SOURCES.get(row["board_id"], {}).get("name", row["board_id"]),
+        "category": SOURCES.get(row["board_id"], {}).get("category", "general"),
         "title": row["title"],
         "writer": row["writer"],
         "posted_at": row["posted_at"],
         "pinned": bool(row["pinned"]),
         "url": row["url"],
+        # Хуучин query-нд энэ багана байхгүй байж болно (жишээ нь notice_summary.get_notice).
+        "international": bool(row["international"]) if "international" in row.keys() else True,
     }
 
 
-def list_saved_notices(limit: int = 50) -> list:
-    """Хадгалсан мэдэгдлүүдийг шинэ нь эхэнд байхаар буцаана."""
+def list_saved_notices(limit: int = 50, international_only: bool = False, category: str = None) -> list:
+    """Хадгалсан мэдэгдлүүдийг шинэ нь эхэнд байхаар буцаана.
+
+    Зөвхөн SOURCES-д байгаа самбаруудын мэдэгдлийг харуулна. Ингэснээр хассан
+    самбарын (жишээ нь 090) хуучин мэдэгдэл DB-д үлдсэн ч гарч ирэхгүй.
+    """
+    boards = [
+        board_id for board_id, source in SOURCES.items()
+        if category is None or source.get("category") == category
+    ]
+    if not boards:
+        return []
+
+    placeholders = ", ".join("?" for _ in boards)
+    international_filter = "AND international = 1" if international_only else ""
     with get_connection() as connection:
         rows = connection.execute(
-            """
-            SELECT id, board_id, title, writer, posted_at, pinned, url
+            f"""
+            SELECT id, board_id, title, writer, posted_at, pinned, url, international
             FROM notices
+            WHERE board_id IN ({placeholders}) {international_filter}
             ORDER BY posted_at DESC, id DESC
             LIMIT ?
             """,
-            (limit,),
+            (*boards, limit),
         ).fetchall()
 
     return [notice_to_dict(row) for row in rows]

@@ -8,6 +8,7 @@
 const VIEWS = ["home", "assignments", "notices", "calendar", "courses", "stats"];
 const VIEW_ALIASES = { dashboard: "home" };
 const HOME_LIST_SIZE = 4;
+const COMPACT_CHAT_HEIGHT = 560;
 
 const viewLinks = document.querySelectorAll("[data-view-link]");
 const nextUpBody = document.getElementById("next-up-body");
@@ -157,12 +158,15 @@ function renderHomeUpcoming(list) {
 function renderHomeNotices() {
     homeNotices.replaceChildren();
 
-    if (schoolNotices.length === 0) {
+    // Нүүрэнд зөвхөн гадаад оюутанд хамаатай мэдэгдэл.
+    const relevant = internationalNotices();
+
+    if (relevant.length === 0) {
         homeNotices.appendChild(emptyListItem("notices.empty"));
         return;
     }
 
-    schoolNotices.slice(0, HOME_LIST_SIZE).forEach(notice => {
+    relevant.slice(0, HOME_LIST_SIZE).forEach(notice => {
         const row = document.createElement("li");
         row.className = "home-row";
 
@@ -198,6 +202,8 @@ function fitAssistantToViewport() {
 
     assistantPanel.style.setProperty("--viewport-height", `${viewport.height}px`);
     assistantPanel.style.setProperty("--viewport-top", `${viewport.offsetTop}px`);
+    // Keyboard гарсан үед (өндөр бага) тайлбарыг нууж, чатад зай гаргана.
+    assistantPanel.classList.toggle("is-compact", viewport.height < COMPACT_CHAT_HEIGHT);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
