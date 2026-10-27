@@ -10,6 +10,13 @@ const NOTICE_VISIBLE_COUNT = 8;      // эхэндээ харуулах тоо (
 const NOTICE_LOAD_LIMIT = 150;       // серверээс авах дээд тоо (3 самбар × 3 хуудас ≈ 90)
 const NOTICE_SCOPE_KEY = "campus_notice_scope";
 
+// Нэг төрлийн олон мэдэгдлийг (жишээ нь сургууль бүрийн "교류수학 안내") нэг мөр болгон нэгтгэнэ.
+// 2-оос олон байвал л нэгтгэнэ, дарахад задарна.
+const NOTICE_GROUPS = [
+    { key: "exchange", pattern: /교류수학/, label: "notices.groupExchange" }
+];
+const openNoticeGroups = new Set();
+
 let schoolNotices = [];
 let noticesLastRefreshed = null;
 let showAllNotices = false;
@@ -230,6 +237,75 @@ async function toggleSummary(notice) {
     }
 }
 
+// Жагсаалтыг [{ notice }] эсвэл [{ group, notices }] болгоно. Бүлэг нь хамгийн шинэ
+// мэдэгдлийнхээ байрлалд гарна (жагсаалт шинэ нь эхэнд эрэмбэлэгдсэн).
+function groupNotices(list) {
+    const entries = [];
+    const groupEntries = {};
+
+    list.forEach(notice => {
+        const group = NOTICE_GROUPS.find(item => item.pattern.test(notice.title));
+        if (!group) {
+            entries.push({ notice });
+            return;
+        }
+        if (!groupEntries[group.key]) {
+            groupEntries[group.key] = { group, notices: [] };
+            entries.push(groupEntries[group.key]);
+        }
+        groupEntries[group.key].notices.push(notice);
+    });
+
+    // Ганц мэдэгдэлтэй бүлгийг энгийн мөр болгоно.
+    return entries.map(entry => (
+        entry.group && entry.notices.length < 2 ? { notice: entry.notices[0] } : entry
+    ));
+}
+
+function createNoticeGroup({ group, notices }) {
+    const item = document.createElement("li");
+    item.className = "notice-item notice-group";
+
+    const isOpen = openNoticeGroups.has(group.key);
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "notice-group-toggle";
+    toggle.setAttribute("aria-expanded", String(isOpen));
+
+    const meta = document.createElement("span");
+    meta.className = "notice-meta";
+    meta.textContent = `${formatDate(notices[notices.length - 1].posted_at)} – ${formatDate(notices[0].posted_at)}`;
+
+    const title = document.createElement("span");
+    title.className = "notice-group-title";
+    title.textContent = `${isOpen ? "▾" : "▸"} ${t(group.label)}`;
+
+    const count = document.createElement("span");
+    count.className = "notice-group-count";
+    count.textContent = notices.length;
+
+    toggle.append(meta, title, count);
+    toggle.addEventListener("click", () => {
+        if (openNoticeGroups.has(group.key)) {
+            openNoticeGroups.delete(group.key);
+        } else {
+            openNoticeGroups.add(group.key);
+        }
+        renderNotices();
+    });
+
+    item.appendChild(toggle);
+
+    if (isOpen) {
+        const children = document.createElement("ul");
+        children.className = "notice-list notice-group-list";
+        notices.forEach(notice => children.appendChild(createNoticeItem(notice)));
+        item.appendChild(children);
+    }
+
+    return item;
+}
+
 function renderNotices() {
     noticeList.replaceChildren();
     renderNoticeScope();
@@ -248,13 +324,17 @@ function renderNotices() {
         return;
     }
 
-    const visible = showAllNotices ? list : list.slice(0, NOTICE_VISIBLE_COUNT);
-    visible.forEach(notice => noticeList.appendChild(createNoticeItem(notice)));
+    // Нэгтгэсэн бүлэг нэг мөрөнд тооцогдоно.
+    const entries = groupNotices(list);
+    const visible = showAllNotices ? entries : entries.slice(0, NOTICE_VISIBLE_COUNT);
+    visible.forEach(entry => noticeList.appendChild(
+        entry.group ? createNoticeGroup(entry) : createNoticeItem(entry.notice)
+    ));
 
-    noticeMoreButton.hidden = list.length <= NOTICE_VISIBLE_COUNT;
+    noticeMoreButton.hidden = entries.length <= NOTICE_VISIBLE_COUNT;
     noticeMoreButton.textContent = showAllNotices
         ? t("notices.showLess")
-        : t("notices.showMore", { n: list.length - NOTICE_VISIBLE_COUNT });
+        : t("notices.showMore", { n: entries.length - NOTICE_VISIBLE_COUNT });
 }
 
 async function refreshNotices({ quiet = false } = {}) {

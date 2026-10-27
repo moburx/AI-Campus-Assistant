@@ -929,6 +929,51 @@ body:has(#auth-section:not([hidden])) footer {
     border-bottom: none;
 }
 
+/* Нэгтгэсэн мэдэгдлийн бүлэг (жишээ нь 교류수학 × 14) */
+.notice-group-toggle {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 12px;
+    width: 100%;
+    margin: 0;
+    padding: 4px 0;
+    background: none;
+    color: var(--color-text);
+    text-align: left;
+}
+
+.notice-group-toggle:hover {
+    background: none;
+    color: var(--color-primary);
+}
+
+.notice-group-toggle .notice-meta {
+    grid-column: 1 / -1;
+}
+
+.notice-group-title {
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.notice-group-count {
+    align-self: center;
+    min-width: 28px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.notice-group-list {
+    margin: 6px 0 0;
+    padding-left: 14px;
+    border-left: 3px solid var(--color-primary-soft);
+}
+
 .notice-meta {
     display: flex;
     flex-wrap: wrap;
