@@ -62,11 +62,18 @@ AI Campus Assistant는 대학생이 과제와 마감일을 효율적으로 관�
   - "AI 설명 · 공식 정보가 아님" 표시와 원문 링크를 항상 함께 제공
   - 답변이 잘린 경우(MAX_TOKENS) 저장하지 않고 오류로 처리
 
+### 마감 알림 메일
+- 매일 아침 9시 이후(한국 시간) 사용자마다 하루 한 통: "오늘 마감", "내일 마감" 과제 목록 (사용자 언어)
+- 같은 과제는 D-1·D-day 각각 한 번만 알림, 마감일을 바꾸면 새 마감일로 다시 알림
+- 완료한 과제, 기한이 지난 과제, 이메일 미인증 사용자, 알림을 끈 사용자는 제외
+- 과제 화면의 스위치로 켜고 끄기 (기본값: 켜짐)
+- 서버가 실행 중이면 백그라운드 스레드가 30분마다 확인, `python -m backend.reminders`로 직접 한 번 실행 가능
+
 ### 이메일 발송 모듈
 - `EMAIL_MODE=console`(기본값): 실제로 보내지 않고 터미널에 출력 (개발·테스트용)
 - `EMAIL_MODE=smtp`: Gmail 등 SMTP 서버로 실제 발송 (STARTTLS, 인증서 검증, 15초 타임아웃)
 - 수신자·제목에 줄바꿈이 있으면 거부 (헤더 인젝션 방지)
-- 회원가입 이메일 인증에 사용 중, 이후 공지 알림 메일에도 사용할 예정
+- 회원가입 이메일 인증과 마감 알림에 사용 중, 이후 공지 알림 메일에도 사용할 예정
 
 ### 화면 구성 및 디자인
 - 로그인 화면: 그라디언트 배경과 카드형 로그인·회원가입
@@ -115,6 +122,7 @@ AI-Campus-Assistant/
 │   ├── notice_summary.py # 공지 본문·이미지 읽기, Gemini로 사용자 언어 설명, 캐시
 │   ├── gemini_models.py # Gemini 무료 한도 초과 시 모델 전환
 │   ├── verification.py  # 회원가입 이메일 인증 (6자리 코드)
+│   ├── reminders.py     # 마감 알림 메일 (D-1, D-day)
 │   └── mailer.py        # 이메일 발송 (console / smtp)
 ├── frontend/
 │   ├── index.html
@@ -143,7 +151,8 @@ AI-Campus-Assistant/
 
 | 테이블 | 주요 컬럼 |
 |---|---|
-| `users` | id, username, email, password_hash, country, preferred_language, email_verified |
+| `users` | id, username, email, password_hash, country, preferred_language, email_verified, reminders_enabled |
+| `deadline_reminders` | assignment_id, kind(d1/d0), deadline, sent_at — 이미 보낸 알림 (중복 방지) |
 | `email_verifications` | user_id, code_hash, expires_at, attempts, last_sent_at — 인증 코드(해시)와 시도 횟수 |
 | `courses` | id, user_id, name, color — (user_id, name) 중복 불가 |
 | `assignments` | id, user_id, course_id, title, course, deadline, priority, notes, completed, completed_at |
@@ -194,6 +203,11 @@ GEMINI_MODEL=gemini-3.5-flash
 # 무료 한도를 다 쓰면 다음 모델로 자동 전환 (쉼표로 구분)
 GEMINI_MODELS=gemini-3.5-flash,gemini-3.1-flash-lite
 GEMINI_THINKING_LEVEL=LOW
+
+# 마감 알림 메일
+REMINDERS_ENABLED=1
+REMINDER_HOUR=9
+APP_TIMEZONE=Asia/Seoul
 
 # 이메일 (console = 터미널에 출력만, smtp = 실제 발송)
 EMAIL_MODE=console
@@ -264,7 +278,7 @@ CORS 설정상 `http://127.0.0.1:5500`과 `http://localhost:5500`에서의 요�
 | POST | `/api/auth/verify` | 6자리 코드 확인 → 인증 완료 후 바로 로그인 (토큰 발급) |
 | POST | `/api/auth/resend` | 인증 코드 다시 보내기 (60초에 한 번) |
 | GET | `/api/auth/me` | 현재 인증된 사용자 정보 조회 |
-| PATCH | `/api/auth/me` | 언어·국가 설정 변경 |
+| PATCH | `/api/auth/me` | 언어·국가·마감 알림 설정 변경 |
 | GET | `/api/assignments` | 과제 목록 조회 (`?status=`, `?course_id=` 필터) |
 | POST | `/api/assignments` | 과제 등록 |
 | PATCH | `/api/assignments/{assignment_id}` | 과제 수정 (보낸 항목만 변경) |
@@ -411,7 +425,7 @@ AI 기능을 사용할 때 사용자의 메시지와 과제 **제목, 과목명,
 
 ### 9.1 자동화 테스트 (pytest)
 
-`tests/` 폴더에 204개의 테스트가 있으며 모두 통과합니다.
+`tests/` 폴더에 225개의 테스트가 있으며 모두 통과합니다.
 
 | 파일 | 내용 | 테스트 수 |
 |---|---|---|
@@ -428,6 +442,7 @@ AI 기능을 사용할 때 사용자의 메시지와 과제 **제목, 과목명,
 | `test_notice_summary.py` | 상세 페이지 파싱, 외부 도메인 이미지 차단, 언어별 캐시, AI 없음 503, 잘린 답변 미저장 | 13 |
 | `test_gemini_models.py` | 무료 한도(429) 시 다음 모델로 전환, 재시도 대기 시간 읽기, 한도 초과 모델 건너뛰기, 사용자 안내 | 17 |
 | `test_verification.py` | 코드 메일 발송(언어별), 해시 저장, 미인증 로그인 403, 오답·만료·5회 초과, 다시 보내기 대기 시간, 가입 여부 비공개, 기존 사용자 마이그레이션 | 24 |
+| `test_reminders.py` | 오늘·내일 마감 목록 메일, 사용자별 분리, 중복 방지, 마감일 변경 시 재알림, 완료·기한 초과·미인증·알림 끔 제외, 발송 실패 시 재시도, 알림 시각 | 21 |
 | `test_mailer.py` | console/smtp 모드, STARTTLS·인증서 검증, 앱 비밀번호 오류 안내, 헤더 인젝션 차단 | 15 |
 
 학교 홈페이지 테스트는 실제 페이지를 `tests/fixtures/`에 저장해 두고 사용하므로, 테스트 중 학교 서버에 요청을 보내지 않습니다. 이 HTML 파일들은 직접 작성한 코드가 아니므로 코드 줄 수에 포함하지 않습니다 (fixtures 제외 시 Python·JavaScript·HTML·CSS 약 9,800줄).
@@ -451,6 +466,8 @@ AI 기능을 사용할 때 사용자의 메시지와 과제 **제목, 과목명,
 | 공지 AI 설명 (몽골어, 포스터 이미지 내용 포함) | 성공 |
 | Gmail 앱 비밀번호로 실제 메일 발송 | 성공 |
 | 휴대폰(iPhone Safari)에서 같은 Wi-Fi로 접속, 로그인·메뉴·AI 채팅 | 성공 |
+| 회원가입 → Gmail로 받은 6자리 코드로 인증 → 로그인 | 성공 |
+| 마감 알림을 직접 실행해 Gmail 수신, 다시 실행하면 0통 (중복 없음) | 성공 |
 | 시간대별 배경, 다크 모드 전환 | 성공 |
 
 위 결과는 개발 과정에서 수행한 테스트를 기준으로 작성했습니다. 모든 예외 상황에 대한 테스트가 완료되었다는 의미는 아닙니다. 번역은 개발자가 작성했으므로 각 언어 사용자의 검토를 거치면 더 자연스러워질 수 있습니다.
@@ -461,7 +478,7 @@ AI 기능을 사용할 때 사용자의 메시지와 과제 **제목, 과목명,
 - 새 공지사항 이메일 알림
 - AI 요청에 사용자별 요청 횟수 제한(rate limit) 적용
 - 에이전트 대화 기록 저장 (이전 대화를 이어서 이해)
-- 마감 알림 (이메일 또는 브라우저 알림)
+- 브라우저(푸시) 알림
 - 실제 배포 환경 구성
 - 사용자 경험 및 접근성 개선
 
@@ -582,3 +599,13 @@ AI 기능을 사용할 때 사용자의 메시지와 과제 **제목, 과목명,
     - 테스트 가입에 `test03@gmail.com`을 입력해 실제 메일이 발송됨 → 다른 사람의 실제 주소일 수 있으므로 테스트에는 `내주소+test@gmail.com`(Gmail의 + 주소)이나 `example.com` + console 모드를 사용
   - 테스트 24개 추가 (총 204개)
 - **배운 점:** 데이터베이스 트랜잭션 안에서 예외를 던지면 그 전의 변경도 사라진다. 보안 규칙("5번 제한")은 실제로 동작하는지 테스트로 확인해야 한다.
+
+### 2026-10-27
+- **마감 알림 메일:** 내일(D-1)·오늘(D-day) 마감인 과제를 하루 한 통의 메일로 알림
+  - `deadline_reminders` 테이블에 (과제, 종류, 마감일)을 기록해 같은 알림을 두 번 보내지 않음
+  - 메일 발송에 실패하면 기록하지 않아 다음 확인 때 다시 시도
+  - 테스트에서는 백그라운드 스레드를 끄고(`REMINDERS_ENABLED=0`), 시각을 직접 넣어(`now=...`) 날짜에 따라 결과가 바뀌지 않게 함
+- **실제 메일을 보내기 전 확인한 점:** 알림 대상 사용자를 DB에서 조회해 보니 테스트 계정 중 `test01@gmail.com`처럼 다른 사람의 실제 주소일 수 있는 계정이 있었음 → 테스트 계정은 알림을 끄고 실행
+- 직접 실행 결과: 1통 발송 → 다시 실행하면 0통 (중복 방지 확인)
+- 테스트 21개 추가 (총 225개)
+- **배운 점:** 자동으로 메일을 보내는 기능은 "누구에게 가는지"를 먼저 확인해야 한다. 시간에 따라 동작하는 코드는 현재 시각을 인자로 받게 만들면 테스트하기 쉽다.
